@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+/* ============================================================
+ * CANDRON OneERP — Design System
+ * Aesthetic: engineering-grade control room, in daylight.
+ * Precise, calm, dense-but-legible. The anti-legacy-ERP.
+ * ==========================================================*/
+
+@theme {
+  /* Typography — Hanken Grotesk (UI) + IBM Plex Mono (technical data) */
+  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Surfaces */
+  --color-canvas: #f4f6f9;
+  --color-surface: #ffffff;
+  --color-surface-2: #f9fafc;
+  --color-surface-3: #f0f3f7;
+
+  /* Ink */
+  --color-ink: #0c1424;
+  --color-ink-2: #3a4459;
+  --color-ink-3: #737d92;
+  --color-ink-4: #9aa2b3;
+
+  /* Lines */
+  --color-line: #e4e8ee;
+  --color-line-2: #eef1f5;
+  --color-line-strong: #d3d9e2;
+
+  /* Brand — electric blue */
+  --color-brand: #2050e0;
+  --color-brand-ink: #163aa8;
+  --color-brand-2: #4d7bff;
+  --color-brand-soft: #e9efff;
+  --color-brand-line: #cdddff;
+
+  /* Copper accent — nod to transformer windings */
+  --color-copper: #b0602c;
+  --color-copper-soft: #f8ede3;
+
+  /* Status */
+  --color-ok: #0f9d63;
+  --color-ok-soft: #e2f5ec;
+  --color-warn: #cd8115;
+  --color-warn-soft: #fbf1dc;
+  --color-danger: #d6443f;
+  --color-danger-soft: #fbe7e6;
+  --color-neutral: #737d92;
+  --color-neutral-soft: #eef1f5;
+
+  /* Elevation */
+  --shadow-card: 0 1px 2px rgba(12, 20, 36, 0.04), 0 1px 3px rgba(12, 20, 36, 0.03);
+  --shadow-pop: 0 8px 24px -6px rgba(12, 20, 36, 0.14), 0 2px 6px rgba(12, 20, 36, 0.06);
+  --shadow-rail: 0 2px 10px -2px rgba(32, 80, 224, 0.18);
+
+  --radius-lg: 14px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-line);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-brand-ink);
+  }
+  /* Technical values — tabular figures everywhere numbers matter */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  /* Slim, quiet scrollbars */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb {
+    background: #d3d9e2;
+    border-radius: 999px;
+    border: 3px solid var(--color-canvas);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #b9c2cf; }
+  ::-webkit-scrollbar-track { background: transparent; }
+}
+
+@layer utilities {
+  /* Faint engineering blueprint grid — used behind the project spine */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, rgba(32, 80, 224, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(32, 80, 224, 0.05) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .bg-grid-fade {
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 30% 0%, #000 40%, transparent 100%);
+    mask-image: radial-gradient(ellipse 80% 70% at 30% 0%, #000 40%, transparent 100%);
+  }
+}
