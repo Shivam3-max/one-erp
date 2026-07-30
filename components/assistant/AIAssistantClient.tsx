@@ -9,7 +9,10 @@ import {
 import { cn } from "@/lib/cn";
 import { money, shortDate } from "@/lib/format";
 import { Mono, Badge } from "@/components/ui/Badge";
-import { getProjects, stageIndex } from "@/lib/mock";
+import { stageIndex } from "@/lib/lifecycle";
+import type { StageKey } from "@/lib/types";
+
+type ProjLite = { id: string; title: string; productSummary: string; tags: string[]; currentStage: StageKey; value: { amount: number }; marginPct?: number; targetDelivery?: string };
 import { healthTone } from "@/lib/status";
 
 const inr = (n: number) => money({ amount: n, currency: "INR" });
@@ -38,7 +41,7 @@ function route(text: string): Kind {
   return "text";
 }
 
-export function AIAssistantClient() {
+export function AIAssistantClient({ projects }: { projects: ProjLite[] }) {
   const [msgs, setMsgs] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -69,7 +72,7 @@ export function AIAssistantClient() {
 
       {/* thread */}
       <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-        {msgs.map((m) => <Message key={m.id} msg={m} onAsk={ask} />)}
+        {msgs.map((m) => <Message key={m.id} msg={m} onAsk={ask} projects={projects} />)}
         {thinking && (
           <div className="flex items-center gap-2 text-[12.5px] text-ink-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-brand to-brand-2 text-white"><Sparkles className="h-3.5 w-3.5" /></span>
@@ -103,7 +106,7 @@ export function AIAssistantClient() {
   );
 }
 
-function Message({ msg, onAsk }: { msg: Msg; onAsk: (t: string, k: Kind) => void }) {
+function Message({ msg, onAsk, projects }: { msg: Msg; onAsk: (t: string, k: Kind) => void; projects: ProjLite[] }) {
   if (msg.role === "user") {
     return (
       <div className="flex justify-end">
@@ -117,9 +120,9 @@ function Message({ msg, onAsk }: { msg: Msg; onAsk: (t: string, k: Kind) => void
       <div className="min-w-0 flex-1">
         {msg.text && <p className="text-[13px] leading-relaxed text-ink-2">{msg.text}</p>}
         {msg.kind === "pipeline" && <PipelineResult />}
-        {msg.kind === "projects" && <ProjectsResult />}
+        {msg.kind === "projects" && <ProjectsResult projects={projects} />}
         {msg.kind === "recommend" && <RecommendResult onAsk={onAsk} />}
-        {msg.kind === "quotes" && <QuotesResult />}
+        {msg.kind === "quotes" && <QuotesResult projects={projects} />}
       </div>
     </div>
   );
@@ -160,8 +163,8 @@ function PipelineResult() {
   );
 }
 
-function ProjectsResult() {
-  const rows = getProjects().filter((p) => p.tags.some((t) => t.includes("33")) && stageIndex(p.currentStage) >= stageIndex("testing"));
+function ProjectsResult({ projects }: { projects: ProjLite[] }) {
+  const rows = projects.filter((p) => p.tags.some((t) => t.includes("33")) && stageIndex(p.currentStage) >= stageIndex("testing"));
   return (
     <div className="mt-2 rounded-xl border border-line bg-surface-2/50 p-2">
       <div className="px-1.5 pb-1.5 text-[11.5px] text-ink-3">Found <b className="text-ink">{rows.length}</b> 33 kV-class projects nearing or past delivery:</div>
@@ -202,8 +205,8 @@ function RecommendResult({ onAsk }: { onAsk: (t: string, k: Kind) => void }) {
   );
 }
 
-function QuotesResult() {
-  const rows = getProjects().filter((p) => p.marginPct != null && p.marginPct < 16);
+function QuotesResult({ projects }: { projects: ProjLite[] }) {
+  const rows = projects.filter((p) => p.marginPct != null && p.marginPct < 16);
   return (
     <div className="mt-2 rounded-xl border border-line bg-surface-2/50 p-2">
       <div className="px-1.5 pb-1.5 text-[11.5px] text-ink-3"><b className="text-ink">{rows.length}</b> live orders below the 16% margin floor:</div>

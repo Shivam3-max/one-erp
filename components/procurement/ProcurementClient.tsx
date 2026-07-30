@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ChevronDown, GitBranch, ShoppingCart, TruckIcon, TriangleAlert, CheckCircle2 } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, GitBranch, ShoppingCart, TruckIcon, TriangleAlert, CheckCircle2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { money, shortDate } from "@/lib/format";
 import { Badge, Mono } from "@/components/ui/Badge";
-import { requirementsFor, vendorById, VENDORS, REQ_STATUS_ORDER, REQ_STATUS_LABEL, type ReqStatus } from "@/lib/mock/procurement";
+import { REQ_STATUS_ORDER, REQ_STATUS_LABEL, type ReqStatus, type MaterialReq, type Vendor } from "@/lib/mock/procurement";
 import { healthTone } from "@/lib/status";
+import { advanceRequirement } from "@/app/actions/execution";
+
+const NEXT_LABEL: Record<ReqStatus, string> = { required: "Raise RFQ", rfq: "Place PO", po: "Mark received", received: "" };
 
 const inr = (n: number) => money({ amount: n, currency: "INR" });
 
@@ -17,9 +21,13 @@ const STATUS_TONE: Record<ReqStatus, { bg: string; text: string; dot: string }> 
   received: { bg: "bg-ok-soft", text: "text-ok", dot: "bg-ok" },
 };
 
-export function ProcurementClient({ projects }: { projects: { id: string; title: string }[] }) {
+export function ProcurementClient({ projects, reqsByProject, vendors }: { projects: { id: string; title: string }[]; reqsByProject: Record<string, MaterialReq[]>; vendors: Vendor[] }) {
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
-  const reqs = useMemo(() => requirementsFor(projectId), [projectId]);
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const advance = (id: string) => start(async () => { await advanceRequirement(id); router.refresh(); });
+  const vendorById = (id: string) => vendors.find((v) => v.id === id);
+  const reqs = useMemo(() => reqsByProject[projectId] ?? [], [reqsByProject, projectId]);
 
   const committed = reqs.filter((r) => r.status === "po" || r.status === "received").reduce((s, r) => s + r.value, 0);
   const open = reqs.filter((r) => r.status !== "received").length;
@@ -65,10 +73,16 @@ export function ProcurementClient({ projects }: { projects: { id: string; title:
                 </div>
                 <div className="text-[12px] text-ink-2">{vendor?.name}</div>
                 <div className="text-[12px] text-ink-3">{shortDate(r.requiredBy)}</div>
-                <div>
+                <div className="flex items-center gap-2">
                   <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold", tone.bg, tone.text)}>
                     <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />{REQ_STATUS_LABEL[r.status]}
                   </span>
+                  {r.status !== "received" && (
+                    <button onClick={() => advance(r.id)} disabled={pending} title={NEXT_LABEL[r.status]}
+                      className="inline-flex items-center gap-0.5 rounded-md border border-line px-1.5 py-0.5 text-[10.5px] font-semibold text-ink-3 transition-colors hover:border-brand-line hover:bg-brand-soft hover:text-brand disabled:opacity-40">
+                      {NEXT_LABEL[r.status]} <ArrowRight className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
                 <div className="text-left tnum font-mono text-[13px] font-semibold text-ink lg:text-right">{inr(r.value)}</div>
               </div>
@@ -91,7 +105,7 @@ export function ProcurementClient({ projects }: { projects: { id: string; title:
       <div className="rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-card)]">
         <div className="border-b border-line-2 px-4 py-3 text-[13px] font-bold text-ink">Approved vendors</div>
         <div className="grid grid-cols-1 divide-y divide-line-2 sm:grid-cols-2 sm:divide-x lg:grid-cols-3">
-          {VENDORS.map((v) => (
+          {vendors.map((v) => (
             <div key={v.id} className="flex items-center justify-between px-4 py-3">
               <div>
                 <div className="text-[12.5px] font-semibold text-ink">{v.name}</div>

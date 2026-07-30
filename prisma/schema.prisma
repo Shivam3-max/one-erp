@@ -1,0 +1,337 @@
+// CANDRON OneERP — data model (SQLite for local; tenantId on every table for multi-tenant).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id              String @id
+  name            String
+  code            String
+  logoText        String
+  primaryCurrency String
+  country         String
+  brandColor      String @default("#2050e0")
+}
+
+model User {
+  id         String @id
+  tenantId   String
+  name       String
+  initials   String
+  role       String
+  department String
+  email      String
+}
+
+model Customer {
+  id       String    @id
+  tenantId String
+  name     String
+  type     String
+  city     String
+  state    String
+  country  String
+  gstin    String?
+  rating   String
+  since    String
+  contacts Contact[]
+}
+
+model Contact {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  name       String
+  role       String
+  email      String
+  phone      String
+  primary    Boolean  @default(false)
+}
+
+model Communication {
+  id         String @id @default(cuid())
+  tenantId   String
+  customerId String
+  type       String
+  subject    String
+  summary    String
+  userId     String
+  date       String
+}
+
+model Opportunity {
+  id            String  @id
+  tenantId      String
+  title         String
+  customerId    String
+  stage         String
+  value         Float
+  currency      String  @default("INR")
+  ownerId       String
+  expectedClose String
+  source        String
+  projectId     String?
+  lastActivity  String
+}
+
+model Project {
+  id             String         @id
+  tenantId       String
+  title          String
+  customerId     String
+  ownerId        String
+  currentStage   String
+  health         String
+  priority       String
+  value          Float
+  currency       String         @default("INR")
+  marginPct      Float?
+  createdAt      String
+  targetDelivery String?
+  location       String
+  productSummary String
+  tags           Json
+  stages         ProjectStage[]
+  artifacts      Artifact[]
+}
+
+model ProjectStage {
+  id          String  @id @default(cuid())
+  projectId   String
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key         String
+  state       String
+  order       Int
+  startedAt   String?
+  completedAt String?
+  ownerId     String?
+  note        String?
+}
+
+model Artifact {
+  id              String         @id
+  tenantId        String
+  projectId       String
+  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type            String
+  title           String
+  status          String
+  stage           String
+  currentRevision Int            @default(1)
+  ownerId         String
+  updatedAt       String
+  upstreamStale   Boolean        @default(false)
+  meta            Json?
+  revisions       Revision[]
+  links           ArtifactLink[]
+}
+
+model Revision {
+  id            String   @id @default(cuid())
+  artifactId    String
+  artifact      Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  rev           Int
+  createdAt     String
+  authorId      String
+  changeSummary String
+}
+
+model ArtifactLink {
+  id           String   @id @default(cuid())
+  artifactId   String
+  artifact     Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  toArtifactId String
+  type         String
+  atRevision   Int
+}
+
+model ProductFamily {
+  id             String  @id
+  tenantId       String
+  name           String
+  category       String
+  blurb          String
+  attributeCount Int
+  active         Boolean @default(true)
+}
+
+model Configuration {
+  id        String  @id @default(cuid())
+  tenantId  String
+  projectId String?
+  familyId  String
+  name      String
+  values    Json
+  marginPct Float   @default(18)
+  validated Boolean @default(true)
+  createdAt String
+  createdBy String
+}
+
+model Quotation {
+  id           String          @id @default(cuid())
+  tenantId     String
+  projectId    String          @unique
+  customerId   String
+  code         String          @unique
+  revision     Int             @default(1)
+  status       String
+  validityDays Int             @default(60)
+  ownerId      String
+  product      String
+  lineItems    Json
+  packing      Float
+  freight      Float
+  insurance    Float
+  gstPct       Float           @default(18)
+  paymentTerms String
+  deliveryWeeks Int
+  scope        Json
+  exclusions   Json
+  terms        Json
+  blocks       Json
+  createdAt    String
+  updatedAt    String
+  revisions    QuoteRevision[]
+  approvals    QuoteApproval[]
+}
+
+model QuoteRevision {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  rev         Int
+  date        String
+  authorId    String
+  change      String
+}
+
+model QuoteApproval {
+  id          String    @id @default(cuid())
+  quotationId String
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  role        String
+  userId      String
+  status      String
+  date        String?
+}
+
+model ComplianceItem {
+  id              String  @id @default(cuid())
+  tenantId        String
+  projectId       String
+  clause          String
+  category        String
+  requirement     String
+  companySpec     String
+  status          String
+  deviation       String?
+  engineerComment String?
+  engineerId      String
+}
+
+model Vendor {
+  id        String @id
+  tenantId  String
+  name      String
+  category  String
+  rating    String
+  location  String
+  onTimePct Int
+}
+
+model MaterialReq {
+  id         String  @id @default(cuid())
+  tenantId   String
+  projectId  String
+  item       String
+  category   String
+  qty        Float
+  unit       String
+  requiredBy String
+  vendorId   String
+  poNo       String?
+  status     String
+  value      Float
+}
+
+model WorkOrder {
+  id           String  @id
+  tenantId     String
+  projectId    String
+  projectShort String
+  unit         String
+  stage        String
+  operator     String
+  machine      String
+  startedAt    String
+  progress     Int
+  status       String
+  issue        String?
+}
+
+model TestUnit {
+  id           String       @id @default(cuid())
+  tenantId     String
+  projectId    String
+  serial       String       @unique
+  projectShort String
+  product      String
+  certIssued   Boolean      @default(false)
+  issuedAt     String?
+  tests        TestRecord[]
+}
+
+model TestRecord {
+  id         String   @id @default(cuid())
+  testUnitId String
+  unit       TestUnit @relation(fields: [testUnitId], references: [id], onDelete: Cascade)
+  name       String
+  category   String
+  result     String
+  value      String?
+  limit      String?
+  engineerId String
+  witnessed  Boolean  @default(false)
+}
+
+model WorkflowConfig {
+  id           String @id @default(cuid())
+  tenantId     String
+  artifactType String
+  label        String
+  states       Json
+  approvalChain Json
+}
+
+model StandardRef {
+  id       String  @id @default(cuid())
+  tenantId String?
+  code     String
+  title    String
+  scope    String
+}
+
+model RateCard {
+  id            String  @id @default(cuid())
+  tenantId      String
+  effectiveFrom String
+  label         String
+  active        Boolean @default(false)
+  rates         Json
+}
+
+model Activity {
+  id        String  @id @default(cuid())
+  tenantId  String
+  projectId String?
+  actorId   String
+  verb      String
+  target    String
+  at        String
+}

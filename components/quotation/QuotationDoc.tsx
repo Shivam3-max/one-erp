@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { setQuotationStatus, reviseQuotation, saveQuotationBlocks } from "@/app/actions/quotations";
 import {
   ArrowLeft, Check, Clock, Download, GripVertical, FileText, Layers,
 } from "lucide-react";
@@ -54,11 +56,39 @@ export function QuotationDoc({ vm }: { vm: QuoteVM }) {
     <span className="mr-2 tnum font-mono text-brand">{String(order.indexOf(t) + 1).padStart(2, "0")}</span>
   );
 
+  const router = useRouter();
+  const [busy, startTx] = useTransition();
+  const setStatus = (s: string) => startTx(async () => { await setQuotationStatus(vm.projectId, s); router.refresh(); });
+  const revise = () => startTx(async () => { await reviseQuotation(vm.projectId, `Revised to R${vm.revision + 1}.`); router.refresh(); });
+  const orig = new Set(vm.blocks.filter((b) => b.included).map((b) => b.type));
+  const layoutDirty = on.size !== orig.size || [...on].some((t) => !orig.has(t));
+  const saveLayout = () => startTx(async () => {
+    await saveQuotationBlocks(vm.projectId, vm.blocks.map((b) => ({ type: b.type, title: b.title, included: on.has(b.type) })));
+    router.refresh();
+  });
+
+  const STATUS_CLS: Record<string, string> = { draft: "bg-neutral-soft text-ink-3", issued: "bg-brand-soft text-brand", won: "bg-ok-soft text-ok", lost: "bg-danger-soft text-danger", revised: "bg-warn-soft text-warn" };
+
   return (
     <>
-      <Link href={`/quotations`} className="mb-3 inline-flex items-center gap-1 text-[12px] font-semibold text-ink-3 hover:text-brand">
-        <ArrowLeft className="h-3.5 w-3.5" /> Quotations
-      </Link>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <Link href={`/quotations`} className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-3 hover:text-brand">
+          <ArrowLeft className="h-3.5 w-3.5" /> Quotations
+        </Link>
+        <div className="flex items-center gap-2">
+          <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide", STATUS_CLS[vm.status] ?? "bg-surface-3 text-ink-3")}>{vm.status}</span>
+          {vm.status === "draft" && (
+            <StatusBtn onClick={() => setStatus("issued")} busy={busy} primary>Issue</StatusBtn>
+          )}
+          {(vm.status === "issued" || vm.status === "revised") && (
+            <>
+              <StatusBtn onClick={() => setStatus("won")} busy={busy} tone="ok">Mark won</StatusBtn>
+              <StatusBtn onClick={() => setStatus("lost")} busy={busy} tone="danger">Mark lost</StatusBtn>
+            </>
+          )}
+          <StatusBtn onClick={revise} busy={busy}>+ Revise</StatusBtn>
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
         {/* Left rail */}
@@ -80,8 +110,14 @@ export function QuotationDoc({ vm }: { vm: QuoteVM }) {
                 </button>
               ))}
             </div>
-            <div className="border-t border-line-2 p-3">
-              <button className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white shadow-[var(--shadow-rail)] transition-colors hover:bg-brand-ink">
+            <div className="space-y-2 border-t border-line-2 p-3">
+              {layoutDirty && (
+                <button onClick={saveLayout} disabled={busy}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand-line bg-brand-soft px-3 py-2 text-[12.5px] font-semibold text-brand-ink transition-colors hover:bg-brand-soft/70 disabled:opacity-50">
+                  <Check className="h-4 w-4" /> {busy ? "Saving…" : "Save layout"}
+                </button>
+              )}
+              <button onClick={() => window.print()} className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-[12.5px] font-semibold text-white shadow-[var(--shadow-rail)] transition-colors hover:bg-brand-ink">
                 <Download className="h-4 w-4" /> Generate PDF
               </button>
             </div>
@@ -259,6 +295,22 @@ export function QuotationDoc({ vm }: { vm: QuoteVM }) {
         </div>
       </div>
     </>
+  );
+}
+
+function StatusBtn({ onClick, busy, children, primary, tone }: { onClick: () => void; busy: boolean; children: React.ReactNode; primary?: boolean; tone?: "ok" | "danger" }) {
+  const styles = primary
+    ? "bg-brand text-white hover:bg-brand-ink border-transparent"
+    : tone === "ok"
+    ? "border-ok/30 bg-ok-soft text-ok hover:bg-ok hover:text-white"
+    : tone === "danger"
+    ? "border-danger/30 bg-danger-soft text-danger hover:bg-danger hover:text-white"
+    : "border-line bg-surface text-ink-2 hover:bg-surface-3";
+  return (
+    <button onClick={onClick} disabled={busy}
+      className={cn("rounded-lg border px-2.5 py-1 text-[12px] font-semibold transition-colors disabled:opacity-50", styles)}>
+      {children}
+    </button>
   );
 }
 

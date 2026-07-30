@@ -8,10 +8,10 @@ import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, CardHeader, SectionLabel } from "@/components/ui/Card";
 import { ProjectSpine } from "@/components/project/ProjectSpine";
-import {
-  getProject, getArtifacts, customerById, userById, stageIndex, LIFECYCLE,
-} from "@/lib/mock";
-import { STAGE_META } from "@/lib/lifecycle";
+import { getProject, getArtifacts, getCustomer, getUserMap } from "@/lib/data";
+import { STAGE_META, LIFECYCLE, stageIndex } from "@/lib/lifecycle";
+import { AdvanceStageButton } from "@/components/project/AdvanceStageButton";
+import { PrintButton } from "@/components/ui/PrintButton";
 import { money, shortDate } from "@/lib/format";
 import { healthTone, healthLabel, priorityTone, titleCase } from "@/lib/status";
 
@@ -29,12 +29,14 @@ export default async function ProjectWorkspace({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const project = getProject(id);
+  const project = await getProject(id);
   if (!project) notFound();
 
-  const customer = customerById(project.customerId);
-  const owner = userById(project.ownerId);
-  const artifacts = getArtifacts(project.id);
+  const [customerRaw, userMap, artifacts] = await Promise.all([
+    getCustomer(project.customerId), getUserMap(), getArtifacts(project.id),
+  ]);
+  const customer = customerRaw!;
+  const owner = userMap[project.ownerId];
   const curIdx = stageIndex(project.currentStage);
   const total = LIFECYCLE.length;
   const pct = Math.round(((curIdx + 1) / total) * 100);
@@ -68,9 +70,13 @@ export default async function ProjectWorkspace({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] font-semibold text-ink-2 transition-colors hover:bg-surface-3">
+              <AdvanceStageButton
+                projectId={project.id}
+                nextStageLabel={curIdx < total - 1 ? STAGE_META[LIFECYCLE[curIdx + 1].key].label : undefined}
+              />
+              <PrintButton className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] font-semibold text-ink-2 transition-colors hover:bg-surface-3">
                 <Download className="h-4 w-4" /> Export
-              </button>
+              </PrintButton>
               <button className="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-surface text-ink-3 transition-colors hover:bg-surface-3">
                 <MoreHorizontal className="h-4 w-4" />
               </button>
@@ -113,7 +119,7 @@ export default async function ProjectWorkspace({
               action={<Badge tone={healthTone["on-track"]} dot>{artifacts.length} artifacts</Badge>}
             />
             <div className="px-4 pb-5 pt-1 sm:px-5">
-              <ProjectSpine stages={project.stages} artifacts={artifacts} />
+              <ProjectSpine stages={project.stages} artifacts={artifacts} users={userMap} />
             </div>
           </Card>
         </div>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Search, ChevronRight } from "lucide-react";
 import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
@@ -37,7 +38,8 @@ const FILTERS: { key: "all" | ProjectHealth; label: string }[] = [
 ];
 
 export function ProjectsTable({ rows }: { rows: ProjectRow[] }) {
-  const [q, setQ] = useState("");
+  const searchParams = useSearchParams();
+  const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [filter, setFilter] = useState<"all" | ProjectHealth>("all");
 
   const counts = useMemo(() => {

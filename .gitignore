@@ -26,3 +26,9 @@ yarn-debug.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# database (prisma / sqlite)
+*.db
+*.db-journal
+/prisma/dev.db*
+/generated

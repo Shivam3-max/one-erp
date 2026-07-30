@@ -7,8 +7,10 @@ import { money, shortDate } from "@/lib/format";
 import { Avatar } from "@/components/ui/Avatar";
 import { Mono } from "@/components/ui/Badge";
 import { Stat } from "@/components/ui/Stat";
-import { OPPORTUNITIES, STAGE_ORDER, STAGE_LABEL, STAGE_PROB, type OppStage } from "@/lib/mock/pipeline";
-import { customerById, userById } from "@/lib/mock/org";
+import { STAGE_ORDER, STAGE_LABEL, STAGE_PROB, type OppStage } from "@/lib/mock/pipeline";
+
+type Opp = { id: string; title: string; customerId: string; stage: OppStage; value: number; ownerId: string; expectedClose: string; source: string; projectId?: string; lastActivity: string };
+type Lite = { name: string; initials: string };
 
 const inr = (n: number) => money({ amount: n, currency: "INR" });
 
@@ -16,12 +18,12 @@ const COL_ACCENT: Record<OppStage, string> = {
   new: "bg-ink-4", qualified: "bg-brand-2", proposal: "bg-brand", negotiation: "bg-warn", won: "bg-ok", lost: "bg-danger",
 };
 
-export function PipelineBoard() {
-  const open = OPPORTUNITIES.filter((o) => o.stage !== "won" && o.stage !== "lost");
+export function PipelineBoard({ opportunities, customerMap, userMap }: { opportunities: Opp[]; customerMap: Record<string, { name: string }>; userMap: Record<string, Lite> }) {
+  const open = opportunities.filter((o) => o.stage !== "won" && o.stage !== "lost");
   const pipelineValue = open.reduce((s, o) => s + o.value, 0);
   const weighted = open.reduce((s, o) => s + o.value * STAGE_PROB[o.stage], 0);
-  const won = OPPORTUNITIES.filter((o) => o.stage === "won");
-  const lost = OPPORTUNITIES.filter((o) => o.stage === "lost");
+  const won = opportunities.filter((o) => o.stage === "won");
+  const lost = opportunities.filter((o) => o.stage === "lost");
   const winRate = won.length + lost.length ? won.length / (won.length + lost.length) : 0;
 
   return (
@@ -35,7 +37,7 @@ export function PipelineBoard() {
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
         {STAGE_ORDER.map((stage) => {
-          const items = OPPORTUNITIES.filter((o) => o.stage === stage);
+          const items = opportunities.filter((o) => o.stage === stage);
           const colValue = items.reduce((s, o) => s + o.value, 0);
           return (
             <div key={stage} className="flex flex-col rounded-[var(--radius-lg)] border border-line bg-surface-2/60">
@@ -49,8 +51,8 @@ export function PipelineBoard() {
               </div>
               <div className="flex-1 space-y-2 p-2">
                 {items.map((o) => {
-                  const cust = customerById(o.customerId);
-                  const owner = userById(o.ownerId);
+                  const cust = customerMap[o.customerId];
+                  const owner = userMap[o.ownerId];
                   const card = (
                     <div className="rounded-xl border border-line bg-surface p-2.5 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-pop)]">
                       <div className="flex items-center justify-between">

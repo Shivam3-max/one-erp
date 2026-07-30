@@ -10,7 +10,8 @@ import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { artifactStatusTone, healthTone, titleCase } from "@/lib/status";
 import { relDate } from "@/lib/format";
-import { userById } from "@/lib/mock/org";
+
+type UserLite = { name: string; initials: string };
 
 const ICONS: Record<ArtifactType, LucideIcon> = {
   tender: FileStack, rfq: FileQuestion, requirement: ListChecks,
@@ -23,9 +24,9 @@ const ICONS: Record<ArtifactType, LucideIcon> = {
   invoice: Receipt, email: Mail, "meeting-note": NotebookPen, photo: ImageIcon,
 };
 
-export function ArtifactCard({ artifact }: { artifact: Artifact }) {
+export function ArtifactCard({ artifact, users }: { artifact: Artifact; users: Record<string, UserLite> }) {
   const Icon = ICONS[artifact.type] ?? FileText;
-  const owner = userById(artifact.ownerId);
+  const owner = users[artifact.ownerId] ?? { name: "—", initials: "?" };
   const tone = artifactStatusTone[artifact.status];
 
   return (

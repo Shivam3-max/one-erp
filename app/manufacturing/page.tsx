@@ -1,7 +1,9 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ManufacturingBoard } from "@/components/manufacturing/ManufacturingBoard";
+import { getWorkOrders } from "@/lib/data";
 
-export default function ManufacturingPage() {
+export default async function ManufacturingPage() {
+  const workOrders = await getWorkOrders();
   return (
     <>
       <PageHeader
@@ -9,7 +11,7 @@ export default function ManufacturingPage() {
         title="Manufacturing"
         subtitle="Every project becomes work orders — core, winding, tank, assembly, drying, testing, painting, packing."
       />
-      <ManufacturingBoard />
+      <ManufacturingBoard workOrders={workOrders} />
     </>
   );
 }

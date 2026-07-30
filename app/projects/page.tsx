@@ -1,13 +1,14 @@
-import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ProjectsTable, type ProjectRow } from "@/components/project/ProjectsTable";
-import { getProjects, customerById, userById, stageIndex, LIFECYCLE } from "@/lib/mock";
-import { STAGE_META } from "@/lib/lifecycle";
+import { NewProjectButton } from "@/components/project/NewProjectButton";
+import { getProjects, getCustomerMap, getUserMap } from "@/lib/data";
+import { STAGE_META, LIFECYCLE, stageIndex } from "@/lib/lifecycle";
 
-export default function ProjectsPage() {
-  const rows: ProjectRow[] = getProjects().map((p) => {
-    const cust = customerById(p.customerId);
-    const owner = userById(p.ownerId);
+export default async function ProjectsPage() {
+  const [projects, customerMap, userMap] = await Promise.all([getProjects(), getCustomerMap(), getUserMap()]);
+  const rows: ProjectRow[] = projects.map((p) => {
+    const cust = customerMap[p.customerId];
+    const owner = userMap[p.ownerId];
     return {
       id: p.id,
       title: p.title,
@@ -33,11 +34,7 @@ export default function ProjectsPage() {
         eyebrow="Workspace"
         title="Projects"
         subtitle={`${rows.length} projects · every customer inquiry, one lifecycle`}
-        action={
-          <button className="flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2 text-[13px] font-semibold text-white shadow-[var(--shadow-rail)] transition-colors hover:bg-brand-ink">
-            <Plus className="h-4 w-4" strokeWidth={2.5} /> New Project
-          </button>
-        }
+        action={<NewProjectButton customers={Object.values(customerMap).map((c) => ({ id: c.id, name: c.name }))} />}
       />
       <ProjectsTable rows={rows} />
     </>

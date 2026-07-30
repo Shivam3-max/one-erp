@@ -10,22 +10,23 @@ import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   getPortfolioMetrics, getStageDistribution, getProjects,
-  getStaleArtifacts, getActivityFeed, customerById, userById,
-} from "@/lib/mock";
+  getStaleArtifacts, getActivityFeed, getCustomerMap, getUserMap,
+} from "@/lib/data";
 import { money, shortDate, relDate } from "@/lib/format";
 import { healthTone, healthLabel } from "@/lib/status";
 
 const inr = (amount: number) => money({ amount, currency: "INR" });
 
-export default function OverviewPage() {
-  const m = getPortfolioMetrics();
-  const stageDist = getStageDistribution().filter((s) => s.count > 0);
+export default async function OverviewPage() {
+  const [m, stageDistAll, projects, stale, feed, customerMap, userMap] = await Promise.all([
+    getPortfolioMetrics(), getStageDistribution(), getProjects(),
+    getStaleArtifacts(), getActivityFeed(7), getCustomerMap(), getUserMap(),
+  ]);
+  const stageDist = stageDistAll.filter((s) => s.count > 0);
   const maxVal = Math.max(...stageDist.map((s) => s.value), 1);
-  const attention = getProjects()
+  const attention = projects
     .filter((p) => p.health === "at-risk" || p.health === "critical")
     .sort((a, b) => b.value.amount - a.value.amount);
-  const stale = getStaleArtifacts();
-  const feed = getActivityFeed(7);
 
   return (
     <>
@@ -94,8 +95,8 @@ export default function OverviewPage() {
             />
             <div className="divide-y divide-line-2">
               {attention.map((p) => {
-                const cust = customerById(p.customerId);
-                const owner = userById(p.ownerId);
+                const cust = customerMap[p.customerId];
+                const owner = userMap[p.ownerId];
                 return (
                   <Link key={p.id} href={`/projects/${p.id}`}
                     className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-surface-2">
@@ -157,7 +158,7 @@ export default function OverviewPage() {
             <CardHeader title="Recent activity" />
             <div className="space-y-3.5 px-5 pb-5">
               {feed.map((f) => {
-                const actor = userById(f.actorId);
+                const actor = userMap[f.actorId];
                 return (
                   <div key={f.id} className="flex gap-2.5">
                     <Avatar initials={actor.initials} name={actor.name} size={26} />

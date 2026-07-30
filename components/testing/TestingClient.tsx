@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, CheckCircle2, XCircle, Clock, BadgeCheck, Eye, PenLine, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { shortDate } from "@/lib/format";
 import { Mono } from "@/components/ui/Badge";
-import { userById } from "@/lib/mock/org";
-import { TEST_UNITS, CAT_LABEL, type TestCat, type TestResult } from "@/lib/mock/testing";
+import { CAT_LABEL, type TestCat, type TestResult, type TestUnit } from "@/lib/mock/testing";
+import { recordTestResult } from "@/app/actions/execution";
+
+type Lite = { name: string; initials: string };
 
 const RESULT: Record<TestResult, { icon: typeof CheckCircle2; color: string; bg: string }> = {
   pass: { icon: CheckCircle2, color: "text-ok", bg: "bg-ok-soft" },
@@ -14,9 +17,12 @@ const RESULT: Record<TestResult, { icon: typeof CheckCircle2; color: string; bg:
   pending: { icon: Clock, color: "text-ink-4", bg: "bg-neutral-soft" },
 };
 
-export function TestingClient() {
-  const [serial, setSerial] = useState(TEST_UNITS[0].serial);
-  const unit = TEST_UNITS.find((u) => u.serial === serial)!;
+export function TestingClient({ units, users }: { units: TestUnit[]; users: Record<string, Lite> }) {
+  const [serial, setSerial] = useState(units[0]?.serial ?? "");
+  const unit = units.find((u) => u.serial === serial) ?? units[0];
+  const router = useRouter();
+  const [saving, start] = useTransition();
+  const record = (id: string, result: "pass" | "fail") => start(async () => { await recordTestResult(id, result); router.refresh(); });
 
   const passed = unit.tests.filter((t) => t.result === "pass").length;
   const pending = unit.tests.filter((t) => t.result === "pending").length;
@@ -31,7 +37,7 @@ export function TestingClient() {
         <div className="relative">
           <select value={serial} onChange={(e) => setSerial(e.target.value)}
             className="appearance-none rounded-lg border border-line bg-surface py-2 pl-3 pr-9 text-[13px] font-semibold text-ink outline-none focus:border-brand-line">
-            {TEST_UNITS.map((u) => <option key={u.serial} value={u.serial}>{u.serial} · {u.projectShort}</option>)}
+            {units.map((u) => <option key={u.serial} value={u.serial}>{u.serial} · {u.projectShort}</option>)}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-4" />
         </div>
@@ -57,7 +63,7 @@ export function TestingClient() {
                   {tests.map((t) => {
                     const R = RESULT[t.result];
                     const Icon = R.icon;
-                    const eng = userById(t.engineerId);
+                    const eng = users[t.engineerId];
                     return (
                       <div key={t.id} className="flex items-center gap-3 px-4 py-2.5">
                         <Icon className={cn("h-4 w-4 shrink-0", R.color)} />
@@ -69,7 +75,14 @@ export function TestingClient() {
                           </div>
                         </div>
                         {t.witnessed && <span title="Client witnessed" className="text-ink-4"><Eye className="h-3.5 w-3.5" /></span>}
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-bold capitalize", R.bg, R.color)}>{t.result}</span>
+                        {t.result === "pending" ? (
+                          <div className="flex gap-1">
+                            <button onClick={() => record(t.id, "pass")} disabled={saving} className="rounded-md bg-ok-soft px-2 py-0.5 text-[10.5px] font-bold text-ok transition-colors hover:bg-ok hover:text-white disabled:opacity-40">Pass</button>
+                            <button onClick={() => record(t.id, "fail")} disabled={saving} className="rounded-md bg-danger-soft px-2 py-0.5 text-[10.5px] font-bold text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-40">Fail</button>
+                          </div>
+                        ) : (
+                          <span className={cn("rounded-full px-2 py-0.5 text-[10.5px] font-bold capitalize", R.bg, R.color)}>{t.result}</span>
+                        )}
                       </div>
                     );
                   })}

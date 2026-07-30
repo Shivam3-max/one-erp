@@ -12,10 +12,11 @@ import {
   initValues, computeCost, attrCount, rateOf, RATE_CARD_DATE,
   type Values, type AttrDef, type FamilyDef,
 } from "@/lib/configurator/model";
+import { SaveToProjectButton } from "./SaveToProjectButton";
 
 const inr = (n: number) => money({ amount: Math.round(n), currency: "INR" });
 
-export function ConfiguratorClient() {
+export function ConfiguratorClient({ projects }: { projects: { id: string; title: string }[] }) {
   const [familyId, setFamilyId] = useState(FAMILIES[0].id);
   const family = FAMILIES.find((f) => f.id === familyId)!;
   const [values, setValues] = useState<Values>(() => initValues(FAMILIES[0]));
@@ -204,13 +205,17 @@ export function ConfiguratorClient() {
 
           {/* Actions */}
           <div className="flex gap-2">
-            <button disabled={errors.length > 0}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2.5 text-[13px] font-semibold text-white shadow-[var(--shadow-rail)] transition-colors hover:bg-brand-ink disabled:cursor-not-allowed disabled:opacity-40">
-              <Save className="h-4 w-4" /> Save to project
-            </button>
-            <button className="flex items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2.5 text-[13px] font-semibold text-ink-2 transition-colors hover:bg-surface-3">
-              Quote <ArrowRight className="h-4 w-4" />
-            </button>
+            <SaveToProjectButton
+              projects={projects}
+              disabled={errors.length > 0}
+              payload={{
+                familyId: family.id,
+                familyName: family.name,
+                values: effective,
+                marginPct: margin,
+                summary: `${derived.mva} MVA ${values.primaryVoltage}/${values.secondaryVoltage} kV ${values.cooling}`,
+              }}
+            />
           </div>
         </div>
       </div>

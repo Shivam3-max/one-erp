@@ -5,10 +5,11 @@ import { ChevronDown, MessageSquareText } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
-import { getCompliance } from "@/lib/mock/compliance";
-import { userById } from "@/lib/mock/org";
 import { complianceTone, titleCase } from "@/lib/status";
 import type { ComplianceStatus } from "@/lib/types";
+
+type CItem = { id: string; clause: string; category: string; requirement: string; companySpec: string; status: ComplianceStatus; deviation?: string; engineerComment?: string; engineerId: string };
+type Lite = { name: string; initials: string };
 
 const FILTERS: { key: "all" | ComplianceStatus; label: string }[] = [
   { key: "all", label: "All" },
@@ -17,11 +18,11 @@ const FILTERS: { key: "all" | ComplianceStatus; label: string }[] = [
   { key: "note", label: "Notes" },
 ];
 
-export function ComplianceClient({ projects }: { projects: { id: string; title: string }[] }) {
+export function ComplianceClient({ projects, data, users }: { projects: { id: string; title: string }[]; data: Record<string, CItem[]>; users: Record<string, Lite> }) {
   const [projectId, setProjectId] = useState(projects[0]?.id ?? "");
   const [filter, setFilter] = useState<"all" | ComplianceStatus>("all");
 
-  const rows = useMemo(() => getCompliance(projectId), [projectId]);
+  const rows = useMemo(() => data[projectId] ?? [], [data, projectId]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: rows.length };
     for (const r of rows) c[r.status] = (c[r.status] ?? 0) + 1;
@@ -73,7 +74,7 @@ export function ComplianceClient({ projects }: { projects: { id: string; title: 
         </div>
         <div className="divide-y divide-line-2">
           {filtered.map((r) => {
-            const eng = userById(r.engineerId);
+            const eng = users[r.engineerId];
             return (
               <div key={r.id} className="grid grid-cols-1 gap-2 px-4 py-3 lg:grid-cols-[52px_1fr_1fr_110px] lg:gap-3">
                 <div className="tnum font-mono text-[12px] font-semibold text-ink-3">{r.clause}</div>

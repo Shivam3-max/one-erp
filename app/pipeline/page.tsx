@@ -1,7 +1,9 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PipelineBoard } from "@/components/pipeline/PipelineBoard";
+import { getOpportunities, getCustomerMap, getUserMap } from "@/lib/data";
 
-export default function PipelinePage() {
+export default async function PipelinePage() {
+  const [opportunities, customerMap, userMap] = await Promise.all([getOpportunities(), getCustomerMap(), getUserMap()]);
   return (
     <>
       <PageHeader
@@ -9,7 +11,7 @@ export default function PipelinePage() {
         title="Pipeline"
         subtitle="Every opportunity from lead to won — a won deal becomes a project on the same spine."
       />
-      <PipelineBoard />
+      <PipelineBoard opportunities={opportunities} customerMap={customerMap} userMap={userMap} />
     </>
   );
 }

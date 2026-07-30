@@ -4,10 +4,9 @@ import { ArrowLeft, MapPin, Mail, Phone, Building2, Calendar, MessageSquare, Pho
 import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { customerById, userById } from "@/lib/mock/org";
-import { getProjects } from "@/lib/mock";
-import { OPPORTUNITIES, STAGE_LABEL } from "@/lib/mock/pipeline";
-import { contactsFor, commsFor, type Comm } from "@/lib/mock/crm";
+import { getCustomer, getUserMap, getProjects, getOpportunities, getContactsFor, getCommsFor } from "@/lib/data";
+import { STAGE_LABEL } from "@/lib/mock/pipeline";
+import { LogCommButton } from "@/components/crm/LogCommButton";
 import { money, shortDate, relDate } from "@/lib/format";
 import { healthTone, healthLabel, titleCase } from "@/lib/status";
 
@@ -17,15 +16,16 @@ const COMM_ICON = { email: Mail, call: PhoneCall, meeting: Users2, "site-visit":
 
 export default async function CustomerDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const customer = customerById(id);
+  const customer = await getCustomer(id);
   if (!customer || customer.id !== id) notFound();
 
-  const projects = getProjects().filter((p) => p.customerId === id);
-  const opps = OPPORTUNITIES.filter((o) => o.customerId === id);
+  const [allProjects, allOpps, contacts, comms, userMap] = await Promise.all([
+    getProjects(), getOpportunities(), getContactsFor(id), getCommsFor(id), getUserMap(),
+  ]);
+  const projects = allProjects.filter((p) => p.customerId === id);
+  const opps = allOpps.filter((o) => o.customerId === id);
   const openOpps = opps.filter((o) => o.stage !== "won" && o.stage !== "lost");
   const orderValue = projects.reduce((s, p) => s + p.value.amount, 0);
-  const contacts = contactsFor(id);
-  const comms = commsFor(id);
 
   return (
     <>
@@ -80,11 +80,11 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
           {/* Communication timeline */}
           <Card>
             <CardHeader title="Communication history" subtitle="Emails · calls · meetings · site visits"
-              action={<button className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1 text-[12px] font-semibold text-ink-2 hover:bg-surface-3"><Send className="h-3.5 w-3.5" /> Log</button>} />
+              action={<LogCommButton customerId={id} />} />
             <div className="space-y-0 px-5 pb-5">
-              {comms.map((c: Comm, i) => {
+              {comms.map((c, i) => {
                 const Icon = COMM_ICON[c.type];
-                const actor = userById(c.userId);
+                const actor = userMap[c.userId];
                 return (
                   <div key={c.id} className="flex gap-3">
                     <div className="flex flex-col items-center">

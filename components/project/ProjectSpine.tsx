@@ -47,9 +47,11 @@ function Node({ state }: { state: ProjectStage["state"] }) {
 export function ProjectSpine({
   stages,
   artifacts,
+  users,
 }: {
   stages: ProjectStage[];
   artifacts: Artifact[];
+  users: Record<string, { name: string; initials: string }>;
 }) {
   const byStage = (key: string) => artifacts.filter((a) => a.stage === key);
 
@@ -99,7 +101,7 @@ export function ProjectSpine({
 
               {items.length > 0 && (
                 <div className="mt-2.5 grid gap-2.5 sm:grid-cols-2">
-                  {items.map((a) => <ArtifactCard key={a.id} artifact={a} />)}
+                  {items.map((a) => <ArtifactCard key={a.id} artifact={a} users={users} />)}
                 </div>
               )}
             </div>
