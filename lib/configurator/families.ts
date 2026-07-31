@@ -307,7 +307,58 @@ export const DISTRIBUTION_TRANSFORMER: FamilyDef = {
   derive, validate, emitBom, datasheet,
 };
 
-export const FAMILIES: FamilyDef[] = [POWER_TRANSFORMER, DISTRIBUTION_TRANSFORMER];
+const AUTO_RATINGS = [
+  { value: "40", label: "40 MVA" }, { value: "63", label: "63 MVA" }, { value: "100", label: "100 MVA" },
+  { value: "167", label: "167 MVA" }, { value: "315", label: "315 MVA" },
+];
+const FURNACE_RATINGS = [
+  { value: "10", label: "10 MVA" }, { value: "20", label: "20 MVA" }, { value: "31.5", label: "31.5 MVA" },
+  { value: "45", label: "45 MVA" }, { value: "63", label: "63 MVA" },
+];
+
+export const AUTO_TRANSFORMER: FamilyDef = {
+  id: "auto-transformer",
+  name: "Auto Transformer",
+  category: "Transformers",
+  blurb: "Oil-filled auto-transformer, 40–315 MVA, 400 / 220 / 132 kV class.",
+  groups: [
+    ratings(AUTO_RATINGS, ["400", "220", "132"], ["220", "132", "66"]),
+    windings,
+    cooling(["ONAN/ONAF", "OFAF", "ODAF"]),
+    core,
+    tank([opt("conventional", "Conventional")], true),
+    tapChanger(true),
+    bushings,
+    protection,
+    standards([opt("IS 2026", "IS 2026"), opt("IEC 60076", "IEC 60076")]),
+    finish,
+    commercial(["24", "36", "60"]),
+  ],
+  derive, validate, emitBom, datasheet,
+};
+
+export const FURNACE_TRANSFORMER: FamilyDef = {
+  id: "furnace-transformer",
+  name: "Furnace Transformer",
+  category: "Transformers",
+  blurb: "Special-duty furnace transformer, 10–63 MVA, high secondary current.",
+  groups: [
+    ratings(FURNACE_RATINGS, ["33", "66", "132"], ["0.4", "0.7", "1.2"]),
+    windings,
+    cooling(["ONAN", "ONAF", "OFAF"]),
+    core,
+    tank([opt("conventional", "Conventional")], true),
+    tapChanger(true),
+    bushings,
+    protection,
+    standards([opt("IS 2026", "IS 2026"), opt("IEC 60076", "IEC 60076")]),
+    finish,
+    commercial(["12", "18", "24"]),
+  ],
+  derive, validate, emitBom, datasheet,
+};
+
+export const FAMILIES: FamilyDef[] = [POWER_TRANSFORMER, DISTRIBUTION_TRANSFORMER, AUTO_TRANSFORMER, FURNACE_TRANSFORMER];
 
 /** flat attribute list for label lookups in datasheet */
 const ALL_ATTRS: AttrDef[] = POWER_TRANSFORMER.groups.flatMap((g) => g.attributes);

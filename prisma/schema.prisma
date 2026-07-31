@@ -19,13 +19,15 @@ model Tenant {
 }
 
 model User {
-  id         String @id
-  tenantId   String
-  name       String
-  initials   String
-  role       String
-  department String
-  email      String
+  id           String  @id
+  tenantId     String
+  name         String
+  initials     String
+  role         String
+  department   String
+  email        String  @unique
+  passwordHash String?
+  accessLevel  String  @default("member")
 }
 
 model Customer {
@@ -258,6 +260,7 @@ model MaterialReq {
   poNo       String?
   status     String
   value      Float
+  quotes     Json?
 }
 
 model WorkOrder {

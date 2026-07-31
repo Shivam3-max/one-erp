@@ -20,6 +20,13 @@ export const vendorById = (id: string) => VENDORS.find((v) => v.id === id);
 
 export type ReqStatus = "required" | "rfq" | "po" | "received";
 
+export interface VendorQuote {
+  vendorId: string;
+  vendorName: string;
+  price: number;
+  leadWeeks: number;
+}
+
 export interface MaterialReq {
   id: string;
   item: string;
@@ -31,6 +38,7 @@ export interface MaterialReq {
   poNo?: string;
   status: ReqStatus;
   value: number;
+  quotes?: VendorQuote[];
 }
 
 const HERO_REQS: MaterialReq[] = [

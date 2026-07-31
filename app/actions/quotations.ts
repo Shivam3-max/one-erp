@@ -2,10 +2,38 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { requireUser } from "@/lib/auth";
+import { can, type Perm } from "@/lib/permissions";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
+async function authorize(perm: Perm) {
+  const user = await requireUser();
+  if (!can(user, perm)) throw new Error("You don't have permission to perform this action.");
+  return user;
+}
+
+export async function setApprovalStatus(projectId: string, role: string, status: "approved" | "pending" | "rejected") {
+  await authorize("quotation.approve");
+  const q = await prisma.quotation.findUnique({ where: { projectId }, include: { approvals: true } });
+  if (!q) return { ok: false };
+  const appr = q.approvals.find((a) => a.role === role);
+  if (!appr) return { ok: false };
+  await prisma.quoteApproval.update({ where: { id: appr.id }, data: { status, date: status === "pending" ? null : today() } });
+  // if any step rejected, revert quote to draft; if all approved, mark issued
+  const fresh = await prisma.quoteApproval.findMany({ where: { quotationId: q.id } });
+  if (fresh.some((a) => a.status === "rejected")) {
+    await prisma.quotation.update({ where: { id: q.id }, data: { status: "draft", updatedAt: today() } });
+  } else if (fresh.every((a) => a.status === "approved") && q.status === "draft") {
+    await prisma.quotation.update({ where: { id: q.id }, data: { status: "issued", updatedAt: today() } });
+  }
+  revalidatePath(`/quotations/${projectId}`);
+  revalidatePath("/quotations");
+  return { ok: true, status };
+}
+
 export async function setQuotationStatus(projectId: string, status: string) {
+  await authorize("quotation.issue");
   await prisma.quotation.update({ where: { projectId }, data: { status, updatedAt: today() } });
   revalidatePath(`/quotations/${projectId}`);
   revalidatePath("/quotations");
@@ -14,6 +42,7 @@ export async function setQuotationStatus(projectId: string, status: string) {
 }
 
 export async function reviseQuotation(projectId: string, change: string) {
+  await authorize("quotation.issue");
   const q = await prisma.quotation.findUnique({ where: { projectId } });
   if (!q) return { ok: false };
   const nextRev = q.revision + 1;
@@ -48,6 +77,7 @@ const ALL_BLOCKS = [
 
 /** Build & persist a quotation from a project's data (for projects without one yet). */
 export async function createQuotationForProject(projectId: string) {
+  await authorize("quotation.create");
   const existing = await prisma.quotation.findUnique({ where: { projectId } });
   if (existing) return { ok: false, reason: "exists" };
   const p = await prisma.project.findUnique({ where: { id: projectId } });

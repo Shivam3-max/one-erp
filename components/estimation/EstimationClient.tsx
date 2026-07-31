@@ -7,11 +7,12 @@ import { money, shortDate } from "@/lib/format";
 import { FAMILIES } from "@/lib/configurator/families";
 import { initValues, computeCost, rateOf, type Values } from "@/lib/configurator/model";
 import { similarBenchmarks, COMMODITIES, mean } from "@/lib/mock/estimation";
+import { SaveEstimateButton } from "./SaveEstimateButton";
 
 const inr = (n: number) => money({ amount: Math.round(n), currency: "INR" });
 const pct = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}%`;
 
-export function EstimationClient() {
+export function EstimationClient({ projects }: { projects: { id: string; title: string }[] }) {
   const [familyId, setFamilyId] = useState(FAMILIES[0].id);
   const family = FAMILIES.find((f) => f.id === familyId)!;
   const ratingOpts = family.groups[0].attributes[0].options!;
@@ -24,6 +25,8 @@ export function EstimationClient() {
   const [winding, setWinding] = useState("copper");
   const [qty, setQty] = useState(2);
   const [margin, setMargin] = useState(18);
+  const [dealerPct, setDealerPct] = useState(2);
+  const [riskPct, setRiskPct] = useState(3);
 
   const values: Values = useMemo(() => ({
     ...initValues(family),
@@ -37,6 +40,14 @@ export function EstimationClient() {
   const derived = useMemo(() => family.derive(values), [family, values]);
   const bom = useMemo(() => family.emitBom(values, derived), [family, values, derived]);
   const cost = useMemo(() => computeCost(bom, values, margin), [bom, values, margin]);
+
+  // commercial build-up
+  const landed = cost.estimatedCost * (1 + riskPct / 100);
+  const sellingBase = landed / (1 - margin / 100);
+  const commission = sellingBase * (dealerPct / 100);
+  const exWorks = sellingBase + commission;
+  const contribution = sellingBase - landed;
+  const summary = `${derived.mva} MVA ${values.primaryVoltage}/${values.secondaryVoltage} kV`;
 
   // cost drivers by category
   const drivers = useMemo(() => {
@@ -169,7 +180,28 @@ export function EstimationClient() {
           <div className="mt-3 space-y-1.5 border-t border-line-2 pt-3 text-[12px]">
             <Row label="Est. cost / unit" value={inr(cost.perUnit)} strong />
             <Row label="Selling / unit" value={inr(cost.sellingPrice / cost.quantity)} />
-            <Row label="Contribution" value={inr(cost.contribution)} />
+          </div>
+        </div>
+
+        {/* Commercial build-up */}
+        <div className="rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-card)]">
+          <div className="border-b border-line-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wide text-ink-4">Commercial build-up</div>
+          <div className="grid grid-cols-2 gap-3 p-4">
+            <NumberField label="Dealer commission %" value={dealerPct} onChange={setDealerPct} min={0} max={15} />
+            <NumberField label="Risk buffer %" value={riskPct} onChange={setRiskPct} min={0} max={20} />
+          </div>
+          <div className="space-y-1.5 border-t border-line-2 px-4 py-3 text-[12px]">
+            <Row label="Landed cost (incl. risk)" value={inr(landed)} />
+            <Row label={`Selling @ ${margin}% margin`} value={inr(sellingBase)} />
+            <Row label={`Dealer commission (${dealerPct}%)`} value={inr(commission)} />
+            <div className="flex items-center justify-between border-t border-line-2 pt-1.5 text-[13px] font-bold text-ink"><span>Ex-works price</span><span className="tnum font-mono">{inr(exWorks)}</span></div>
+          </div>
+          <div className="grid grid-cols-2 gap-2 border-t border-line-2 p-3">
+            <div className="rounded-lg bg-ok-soft/50 px-3 py-2 text-center"><div className="tnum font-mono text-[14px] font-semibold text-ok">{inr(contribution)}</div><div className="text-[10px] uppercase tracking-wide text-ink-4">Contribution</div></div>
+            <div className="rounded-lg bg-surface-2 px-3 py-2 text-center"><div className="tnum font-mono text-[14px] font-semibold text-ink">{inr(landed)}</div><div className="text-[10px] uppercase tracking-wide text-ink-4">Break-even</div></div>
+          </div>
+          <div className="border-t border-line-2 p-3">
+            <SaveEstimateButton projects={projects} payload={{ summary, estimatedCost: cost.estimatedCost, sellingPrice: exWorks, marginPct: margin }} />
           </div>
         </div>
 

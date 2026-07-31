@@ -8,7 +8,7 @@ import { money, shortDate } from "@/lib/format";
 import { Badge, Mono } from "@/components/ui/Badge";
 import { REQ_STATUS_ORDER, REQ_STATUS_LABEL, type ReqStatus, type MaterialReq, type Vendor } from "@/lib/mock/procurement";
 import { healthTone } from "@/lib/status";
-import { advanceRequirement } from "@/app/actions/execution";
+import { advanceRequirement, raiseRFQ, awardPO } from "@/app/actions/execution";
 
 const NEXT_LABEL: Record<ReqStatus, string> = { required: "Raise RFQ", rfq: "Place PO", po: "Mark received", received: "" };
 
@@ -26,6 +26,8 @@ export function ProcurementClient({ projects, reqsByProject, vendors }: { projec
   const router = useRouter();
   const [pending, start] = useTransition();
   const advance = (id: string) => start(async () => { await advanceRequirement(id); router.refresh(); });
+  const rfq = (id: string) => start(async () => { await raiseRFQ(id); router.refresh(); });
+  const award = (id: string, vendorId: string) => start(async () => { await awardPO(id, vendorId); router.refresh(); });
   const vendorById = (id: string) => vendors.find((v) => v.id === id);
   const reqs = useMemo(() => reqsByProject[projectId] ?? [], [reqsByProject, projectId]);
 
@@ -65,26 +67,56 @@ export function ProcurementClient({ projects, reqsByProject, vendors }: { projec
           {reqs.map((r) => {
             const vendor = vendorById(r.vendorId);
             const tone = STATUS_TONE[r.status];
+            const hasQuotes = r.status === "rfq" && (r.quotes?.length ?? 0) > 0;
+            const bestPrice = hasQuotes ? Math.min(...r.quotes!.map((q) => q.price)) : 0;
             return (
-              <div key={r.id} className="grid grid-cols-1 gap-2 px-4 py-3 lg:grid-cols-[1fr_150px_120px_140px_110px] lg:items-center">
-                <div>
-                  <div className="text-[13px] font-semibold text-ink">{r.item}</div>
-                  <div className="tnum font-mono text-[11px] text-ink-3">{r.qty.toLocaleString("en-IN")} {r.unit} · {r.category}{r.poNo && <> · <span className="text-brand">{r.poNo}</span></>}</div>
+              <div key={r.id}>
+                <div className="grid grid-cols-1 gap-2 px-4 py-3 lg:grid-cols-[1fr_150px_120px_140px_110px] lg:items-center">
+                  <div>
+                    <div className="text-[13px] font-semibold text-ink">{r.item}</div>
+                    <div className="tnum font-mono text-[11px] text-ink-3">{r.qty.toLocaleString("en-IN")} {r.unit} · {r.category}{r.poNo && <> · <span className="text-brand">{r.poNo}</span></>}</div>
+                  </div>
+                  <div className="text-[12px] text-ink-2">{vendor?.name}</div>
+                  <div className="text-[12px] text-ink-3">{shortDate(r.requiredBy)}</div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold", tone.bg, tone.text)}>
+                      <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />{REQ_STATUS_LABEL[r.status]}
+                    </span>
+                    {r.status === "required" && (
+                      <button onClick={() => rfq(r.id)} disabled={pending}
+                        className="inline-flex items-center gap-0.5 rounded-md border border-line px-1.5 py-0.5 text-[10.5px] font-semibold text-ink-3 transition-colors hover:border-brand-line hover:bg-brand-soft hover:text-brand disabled:opacity-40">
+                        Raise RFQ <ArrowRight className="h-3 w-3" />
+                      </button>
+                    )}
+                    {(r.status === "po") && (
+                      <button onClick={() => advance(r.id)} disabled={pending}
+                        className="inline-flex items-center gap-0.5 rounded-md border border-line px-1.5 py-0.5 text-[10.5px] font-semibold text-ink-3 transition-colors hover:border-brand-line hover:bg-brand-soft hover:text-brand disabled:opacity-40">
+                        Mark received <ArrowRight className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="text-left tnum font-mono text-[13px] font-semibold text-ink lg:text-right">{inr(r.value)}</div>
                 </div>
-                <div className="text-[12px] text-ink-2">{vendor?.name}</div>
-                <div className="text-[12px] text-ink-3">{shortDate(r.requiredBy)}</div>
-                <div className="flex items-center gap-2">
-                  <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold", tone.bg, tone.text)}>
-                    <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />{REQ_STATUS_LABEL[r.status]}
-                  </span>
-                  {r.status !== "received" && (
-                    <button onClick={() => advance(r.id)} disabled={pending} title={NEXT_LABEL[r.status]}
-                      className="inline-flex items-center gap-0.5 rounded-md border border-line px-1.5 py-0.5 text-[10.5px] font-semibold text-ink-3 transition-colors hover:border-brand-line hover:bg-brand-soft hover:text-brand disabled:opacity-40">
-                      {NEXT_LABEL[r.status]} <ArrowRight className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-                <div className="text-left tnum font-mono text-[13px] font-semibold text-ink lg:text-right">{inr(r.value)}</div>
+
+                {hasQuotes && (
+                  <div className="mx-4 mb-3 rounded-lg border border-line-2 bg-surface-2/60 p-3">
+                    <div className="mb-2 text-[10.5px] font-bold uppercase tracking-wide text-ink-4">Vendor RFQ comparison — award to proceed</div>
+                    <div className="space-y-1.5">
+                      {[...r.quotes!].sort((a, b) => a.price - b.price).map((q) => {
+                        const best = q.price === bestPrice;
+                        return (
+                          <div key={q.vendorId} className={cn("flex items-center gap-3 rounded-md px-2.5 py-1.5", best ? "bg-ok-soft/60" : "bg-surface")}>
+                            <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-ink">{q.vendorName}{best && <span className="ml-1.5 rounded bg-ok px-1 py-px text-[9px] font-bold uppercase text-white">lowest</span>}</span>
+                            <span className="tnum shrink-0 font-mono text-[11px] text-ink-3">{q.leadWeeks}w lead</span>
+                            <span className="tnum w-20 shrink-0 text-right font-mono text-[12.5px] font-semibold text-ink">{inr(q.price)}</span>
+                            <button onClick={() => award(r.id, q.vendorId)} disabled={pending}
+                              className="shrink-0 rounded-md bg-brand px-2 py-0.5 text-[10.5px] font-semibold text-white hover:bg-brand-ink disabled:opacity-40">Award</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

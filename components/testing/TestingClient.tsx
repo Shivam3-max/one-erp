@@ -53,6 +53,20 @@ export function TestingClient({ units, users }: { units: TestUnit[]; users: Reco
             <MiniKPI label="Pass rate" value={`${passRate}%`} tone="brand" />
           </div>
 
+          {unit.tests.some((t) => t.result === "fail") && (
+            <div className="rounded-[var(--radius-lg)] border border-danger/30 bg-danger-soft/40 p-4">
+              <div className="flex items-center gap-2 text-[13px] font-bold text-danger"><XCircle className="h-4 w-4" /> Non-conformances (NCR)</div>
+              <ul className="mt-2 space-y-1.5">
+                {unit.tests.filter((t) => t.result === "fail").map((t) => (
+                  <li key={t.id} className="flex items-start gap-2 text-[12px] text-ink-2">
+                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-danger" />
+                    <span><b className="text-ink">{t.name}</b> failed{t.limit ? ` (limit ${t.limit})` : ""} — CAPA required before the certificate can issue.</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {cats.map((cat) => {
             const tests = unit.tests.filter((t) => t.category === cat);
             if (!tests.length) return null;

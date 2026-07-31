@@ -3,10 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { LIFECYCLE } from "@/lib/lifecycle";
+import { requireUser } from "@/lib/auth";
+import { can, type Perm } from "@/lib/permissions";
 
-async function tenantId() {
-  const t = await prisma.tenant.findFirst({ select: { id: true } });
-  return t?.id ?? "T-CANDRON";
+async function authorize(perm: Perm) {
+  const user = await requireUser();
+  if (!can(user, perm)) throw new Error("You don't have permission to perform this action.");
+  return user;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -21,7 +24,8 @@ export async function createProject(input: {
   targetDelivery?: string;
   ownerId?: string;
 }) {
-  const tId = await tenantId();
+  const user = await authorize("project.create");
+  const tId = user.tenantId;
   const existing = await prisma.project.findMany({ where: { id: { startsWith: "PRJ-2026-" } }, select: { id: true } });
   const maxN = existing.reduce((m, p) => {
     const n = parseInt(p.id.split("-").pop() || "0", 10);
@@ -36,7 +40,7 @@ export async function createProject(input: {
       tenantId: tId,
       title: input.title,
       customerId: input.customerId,
-      ownerId: input.ownerId || "U-01",
+      ownerId: input.ownerId || user.id,
       currentStage: "lead",
       health: "on-track",
       priority: input.priority,
@@ -66,6 +70,7 @@ export async function createProject(input: {
 
 /** Move a project one step forward along the lifecycle spine. */
 export async function advanceProjectStage(projectId: string) {
+  await authorize("project.advance");
   const project = await prisma.project.findUnique({ where: { id: projectId }, include: { stages: true } });
   if (!project) return { ok: false };
   const ordered = [...project.stages].sort((a, b) => a.order - b.order);

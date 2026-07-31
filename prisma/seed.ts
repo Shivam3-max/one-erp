@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { TENANT, USERS, CUSTOMERS } from "../lib/mock/org";
 import { PROJECTS } from "../lib/mock/projects";
 import { artifactsForProject } from "../lib/mock/artifacts";
@@ -32,7 +33,11 @@ async function main() {
   ]);
 
   await prisma.tenant.create({ data: { id: TENANT.id, name: TENANT.name, code: TENANT.code, logoText: TENANT.logoText, primaryCurrency: TENANT.primaryCurrency, country: TENANT.country } });
-  await prisma.user.createMany({ data: USERS.map((u) => ({ id: u.id, tenantId: T, name: u.name, initials: u.initials, role: u.role, department: u.department, email: u.email })) });
+
+  const passwordHash = await bcrypt.hash("candron123", 10);
+  const LEVEL: Record<string, string> = { "U-09": "admin", "U-05": "manager", "U-01": "manager" };
+  await prisma.user.createMany({ data: USERS.map((u) => ({ id: u.id, tenantId: T, name: u.name, initials: u.initials, role: u.role, department: u.department, email: u.email, passwordHash, accessLevel: LEVEL[u.id] ?? "member" })) });
+  await prisma.user.create({ data: { id: "U-10", tenantId: T, name: "Guest Viewer", initials: "GV", role: "Viewer", department: "sales", email: "viewer@candron.in", passwordHash, accessLevel: "viewer" } });
 
   // customers + contacts
   for (const c of CUSTOMERS) {

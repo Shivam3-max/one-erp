@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { QuotationDoc, type QuoteVM } from "@/components/quotation/QuotationDoc";
 import { quoteTotals } from "@/lib/mock/quotations";
 import { getQuotationByProject, getComplianceItems, getProject, getCustomer, getUserMap } from "@/lib/data";
+import { getCurrentUser } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 
 export default async function QuotationDetail({ params }: { params: Promise<{ projectId: string }> }) {
   const { projectId } = await params;
@@ -54,5 +56,6 @@ export default async function QuotationDetail({ params }: { params: Promise<{ pr
     },
   };
 
-  return <QuotationDoc vm={vm} />;
+  const user = await getCurrentUser();
+  return <QuotationDoc vm={vm} canApprove={can(user, "quotation.approve")} />;
 }

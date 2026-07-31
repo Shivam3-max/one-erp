@@ -4,14 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV } from "./nav";
 import { cn } from "@/lib/cn";
-import { TENANT } from "@/lib/mock/org";
 import { Zap } from "lucide-react";
 
-export function Sidebar() {
+export function Sidebar({ logoText, tenantName }: { logoText: string; tenantName: string }) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-line bg-surface lg:flex">
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-line bg-surface lg:flex print:hidden">
       {/* Brand */}
       <div className="flex h-14 items-center gap-2.5 border-b border-line px-5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white shadow-[var(--shadow-rail)]">
@@ -19,7 +18,7 @@ export function Sidebar() {
         </div>
         <div className="leading-none">
           <div className="text-[15px] font-extrabold tracking-tight text-ink">
-            {TENANT.logoText}
+            {logoText}
             <span className="ml-1 font-mono text-[10px] font-semibold text-brand align-top">OneERP</span>
           </div>
           <div className="mt-1 text-[10px] font-medium text-ink-4">Project Lifecycle Platform</div>
@@ -74,11 +73,11 @@ export function Sidebar() {
       <div className="border-t border-line px-4 py-3">
         <div className="flex items-center gap-2 rounded-lg bg-surface-2 px-2.5 py-2">
           <div className="flex h-7 w-7 items-center justify-center rounded-md bg-ink text-[11px] font-bold text-white">
-            CE
+            {tenantName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="truncate text-[11px] font-semibold text-ink">CANDRON Electricals</div>
-            <div className="text-[10px] text-ink-4">Tenant #1 · India</div>
+            <div className="truncate text-[11px] font-semibold text-ink">{tenantName}</div>
+            <div className="text-[10px] text-ink-4">Your workspace</div>
           </div>
         </div>
       </div>

@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { setQuotationStatus, reviseQuotation, saveQuotationBlocks } from "@/app/actions/quotations";
+import { setQuotationStatus, reviseQuotation, saveQuotationBlocks, setApprovalStatus } from "@/app/actions/quotations";
 import {
-  ArrowLeft, Check, Clock, Download, GripVertical, FileText, Layers,
+  ArrowLeft, Check, Clock, Download, GripVertical, FileText, Layers, X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { money, shortDate } from "@/lib/format";
@@ -42,7 +42,7 @@ export interface QuoteVM {
   compliance: { total: number; comply: number; deviate: number; note: number; flagged: { clause: string; requirement: string; companySpec: string; status: "comply" | "deviate" | "note" | "not-applicable"; deviation?: string }[] };
 }
 
-export function QuotationDoc({ vm }: { vm: QuoteVM }) {
+export function QuotationDoc({ vm, canApprove = false }: { vm: QuoteVM; canApprove?: boolean }) {
   const [on, setOn] = useState<Set<QuoteBlockType>>(new Set(vm.blocks.filter((b) => b.included).map((b) => b.type)));
   const toggle = (t: QuoteBlockType) => setOn((prev) => {
     const n = new Set(prev);
@@ -66,12 +66,16 @@ export function QuotationDoc({ vm }: { vm: QuoteVM }) {
     await saveQuotationBlocks(vm.projectId, vm.blocks.map((b) => ({ type: b.type, title: b.title, included: on.has(b.type) })));
     router.refresh();
   });
+  const approve = (role: string, status: "approved" | "rejected") => startTx(async () => {
+    await setApprovalStatus(vm.projectId, role, status);
+    router.refresh();
+  });
 
   const STATUS_CLS: Record<string, string> = { draft: "bg-neutral-soft text-ink-3", issued: "bg-brand-soft text-brand", won: "bg-ok-soft text-ok", lost: "bg-danger-soft text-danger", revised: "bg-warn-soft text-warn" };
 
   return (
     <>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <Link href={`/quotations`} className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-3 hover:text-brand">
           <ArrowLeft className="h-3.5 w-3.5" /> Quotations
         </Link>
@@ -90,9 +94,9 @@ export function QuotationDoc({ vm }: { vm: QuoteVM }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr] print:block">
         {/* Left rail */}
-        <div className="space-y-4 lg:sticky lg:top-[76px] lg:self-start">
+        <div className="space-y-4 lg:sticky lg:top-[76px] lg:self-start print:hidden">
           <div className="rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-card)]">
             <div className="flex items-center gap-1.5 border-b border-line-2 px-4 py-3 text-[12.5px] font-bold text-ink">
               <Layers className="h-4 w-4 text-ink-3" /> Document blocks
@@ -126,19 +130,32 @@ export function QuotationDoc({ vm }: { vm: QuoteVM }) {
           {/* Approval chain */}
           <div className="rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-card)]">
             <div className="border-b border-line-2 px-4 py-3 text-[12.5px] font-bold text-ink">Approval chain</div>
-            <div className="space-y-0 p-3">
-              {vm.approvals.map((a, i) => (
-                <div key={a.role} className="flex items-center gap-2.5 py-1.5">
-                  <span className={cn("flex h-6 w-6 items-center justify-center rounded-full", a.status === "approved" ? "bg-ok text-white" : "bg-surface-3 text-ink-4")}>
-                    {a.status === "approved" ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : <Clock className="h-3.5 w-3.5" />}
-                  </span>
-                  <div className="flex-1">
-                    <div className="text-[12px] font-semibold text-ink">{a.role}</div>
-                    <div className="text-[10.5px] text-ink-4">{a.userName}{a.date ? ` · ${shortDate(a.date)}` : " · pending"}</div>
+            <div className="space-y-0.5 p-3">
+              {vm.approvals.map((a) => {
+                const rejected = a.status === "rejected";
+                const approved = a.status === "approved";
+                return (
+                  <div key={a.role} className="flex items-center gap-2.5 py-1.5">
+                    <span className={cn("flex h-6 w-6 shrink-0 items-center justify-center rounded-full", approved ? "bg-ok text-white" : rejected ? "bg-danger text-white" : "bg-surface-3 text-ink-4")}>
+                      {approved ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : rejected ? <X className="h-3.5 w-3.5" strokeWidth={3} /> : <Clock className="h-3.5 w-3.5" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12px] font-semibold text-ink">{a.role}</div>
+                      <div className="truncate text-[10.5px] text-ink-4">{a.userName}{a.date ? ` · ${shortDate(a.date)}` : rejected ? " · rejected" : " · pending"}</div>
+                    </div>
+                    {canApprove && !approved && (
+                      <div className="flex shrink-0 gap-1">
+                        <button onClick={() => approve(a.role, "approved")} disabled={busy} title="Approve"
+                          className="flex h-6 w-6 items-center justify-center rounded-md bg-ok-soft text-ok hover:bg-ok hover:text-white disabled:opacity-40"><Check className="h-3.5 w-3.5" /></button>
+                        <button onClick={() => approve(a.role, "rejected")} disabled={busy} title="Reject"
+                          className="flex h-6 w-6 items-center justify-center rounded-md bg-danger-soft text-danger hover:bg-danger hover:text-white disabled:opacity-40"><X className="h-3.5 w-3.5" /></button>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
+            {canApprove && <div className="border-t border-line-2 px-3 py-2 text-[10.5px] text-ink-4">All steps approved → auto-issues. Any rejection → back to draft.</div>}
           </div>
         </div>
 

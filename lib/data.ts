@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { prisma } from "./db";
 import { stageIndex } from "./lifecycle";
+import { currentTenantId } from "./auth";
 import type {
   Tenant, User, Customer, Project, Artifact, ProjectStage, StageKey, StageState,
   ArtifactType, ArtifactStatus, ProjectHealth, ProjectPriority, CustomerType,
@@ -9,12 +10,12 @@ import type {
 /* ---------------- masters (cached per request) ---------------- */
 
 export const getTenant = cache(async (): Promise<Tenant> => {
-  const t = await prisma.tenant.findFirst();
+  const t = await prisma.tenant.findUnique({ where: { id: await currentTenantId() } });
   return t as unknown as Tenant;
 });
 
 export const getUsers = cache(async (): Promise<User[]> => {
-  const rows = await prisma.user.findMany({ orderBy: { id: "asc" } });
+  const rows = await prisma.user.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { id: "asc" } });
   return rows as unknown as User[];
 });
 
@@ -24,7 +25,7 @@ export const getUserMap = cache(async (): Promise<Record<string, User>> => {
 });
 
 export const getCustomers = cache(async (): Promise<Customer[]> => {
-  const rows = await prisma.customer.findMany({ orderBy: { id: "asc" } });
+  const rows = await prisma.customer.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { id: "asc" } });
   return rows as unknown as Customer[];
 });
 
@@ -55,7 +56,7 @@ function mapProject(p: any): Project {
 }
 
 export const getProjects = cache(async (): Promise<Project[]> => {
-  const rows = await prisma.project.findMany({ include: { stages: true }, orderBy: { createdAt: "desc" } });
+  const rows = await prisma.project.findMany({ where: { tenantId: await currentTenantId() }, include: { stages: true }, orderBy: { createdAt: "desc" } });
   return rows.map(mapProject);
 });
 
@@ -82,7 +83,7 @@ export async function getArtifacts(projectId: string): Promise<Artifact[]> {
 }
 
 async function allArtifacts(): Promise<Artifact[]> {
-  const rows = await prisma.artifact.findMany({ include: { revisions: true, links: true } });
+  const rows = await prisma.artifact.findMany({ where: { tenantId: await currentTenantId() }, include: { revisions: true, links: true } });
   return rows.map(mapArtifact);
 }
 
@@ -100,7 +101,7 @@ export async function getPortfolioMetrics() {
     if (p.health === "at-risk" || p.health === "critical") atRiskCount++;
     if (p.marginPct != null) { marginSum += p.marginPct; marginN++; }
   }
-  const staleCount = await prisma.artifact.count({ where: { upstreamStale: true } });
+  const staleCount = await prisma.artifact.count({ where: { upstreamStale: true, tenantId: await currentTenantId() } });
   return {
     pipelineValue, orderBook, activeCount: projects.filter((p) => p.health !== "closed").length,
     atRiskCount, avgMargin: marginN ? marginSum / marginN : 0, staleCount,
@@ -118,7 +119,7 @@ export async function getStageDistribution() {
 }
 
 export async function getStaleArtifacts() {
-  const rows = await prisma.artifact.findMany({ where: { upstreamStale: true }, include: { revisions: true, links: true } });
+  const rows = await prisma.artifact.findMany({ where: { upstreamStale: true, tenantId: await currentTenantId() }, include: { revisions: true, links: true } });
   const projects = await getProjects();
   const byId = Object.fromEntries(projects.map((p) => [p.id, p]));
   return rows.map((a) => ({ artifact: mapArtifact(a), project: byId[a.projectId] })).filter((x) => x.project);
@@ -142,7 +143,7 @@ export async function getActivityFeed(limit = 12) {
 /* ---------------- sales / pipeline ---------------- */
 
 export async function getOpportunities() {
-  const rows = await prisma.opportunity.findMany();
+  const rows = await prisma.opportunity.findMany({ where: { tenantId: await currentTenantId() } });
   return rows.map((o) => ({
     id: o.id, tenantId: o.tenantId, title: o.title, customerId: o.customerId, stage: o.stage,
     value: o.value, ownerId: o.ownerId, expectedClose: o.expectedClose, source: o.source,
@@ -177,7 +178,7 @@ function mapQuote(q: any) {
 }
 
 export async function getQuotations() {
-  const rows = await prisma.quotation.findMany({ include: { revisions: true, approvals: true } });
+  const rows = await prisma.quotation.findMany({ where: { tenantId: await currentTenantId() }, include: { revisions: true, approvals: true } });
   return rows.map(mapQuote);
 }
 
@@ -194,7 +195,7 @@ export async function getComplianceItems(projectId: string) {
 }
 
 export async function getProjectsWithCompliance() {
-  const items = await prisma.complianceItem.findMany({ select: { projectId: true }, distinct: ["projectId"] });
+  const items = await prisma.complianceItem.findMany({ where: { tenantId: await currentTenantId() }, select: { projectId: true }, distinct: ["projectId"] });
   const ids = items.map((i) => i.projectId);
   const projects = await prisma.project.findMany({ where: { id: { in: ids } }, select: { id: true, title: true } });
   return projects;
@@ -204,11 +205,11 @@ export async function getProjectsWithCompliance() {
 
 export async function getRequirements(projectId: string) {
   const rows = await prisma.materialReq.findMany({ where: { projectId } });
-  return rows.map((r) => ({ id: r.id, item: r.item, category: r.category, qty: r.qty, unit: r.unit, requiredBy: r.requiredBy, vendorId: r.vendorId, poNo: r.poNo ?? undefined, status: r.status as any, value: r.value }));
+  return rows.map((r) => ({ id: r.id, item: r.item, category: r.category, qty: r.qty, unit: r.unit, requiredBy: r.requiredBy, vendorId: r.vendorId, poNo: r.poNo ?? undefined, status: r.status as any, value: r.value, quotes: (r.quotes as { vendorId: string; vendorName: string; price: number; leadWeeks: number }[] | null) ?? undefined }));
 }
 
 export async function getVendors() {
-  const rows = await prisma.vendor.findMany();
+  const rows = await prisma.vendor.findMany({ where: { tenantId: await currentTenantId() } });
   return rows.map((v) => ({ id: v.id, name: v.name, category: v.category, rating: v.rating as "A" | "B", location: v.location, onTimePct: v.onTimePct }));
 }
 
@@ -220,14 +221,14 @@ export async function getProjectsForProcurement() {
 /* ---------------- manufacturing ---------------- */
 
 export async function getWorkOrders() {
-  const rows = await prisma.workOrder.findMany();
+  const rows = await prisma.workOrder.findMany({ where: { tenantId: await currentTenantId() } });
   return rows.map((w) => ({ id: w.id, projectId: w.projectId, projectShort: w.projectShort, unit: w.unit, stage: w.stage as any, operator: w.operator, machine: w.machine, startedAt: w.startedAt, progress: w.progress, status: w.status as any, issue: w.issue ?? undefined }));
 }
 
 /* ---------------- testing ---------------- */
 
 export async function getTestUnits() {
-  const rows = await prisma.testUnit.findMany({ include: { tests: true } });
+  const rows = await prisma.testUnit.findMany({ where: { tenantId: await currentTenantId() }, include: { tests: true } });
   return rows.map((u) => ({
     serial: u.serial, projectId: u.projectId, projectShort: u.projectShort, product: u.product, certIssued: u.certIssued, issuedAt: u.issuedAt ?? undefined,
     tests: u.tests.map((t) => ({ id: t.id, name: t.name, category: t.category as any, result: t.result as any, value: t.value ?? undefined, limit: t.limit ?? undefined, engineerId: t.engineerId, witnessed: t.witnessed })),
@@ -237,22 +238,22 @@ export async function getTestUnits() {
 /* ---------------- settings masters ---------------- */
 
 export async function getFamilies() {
-  const rows = await prisma.productFamily.findMany();
+  const rows = await prisma.productFamily.findMany({ where: { tenantId: await currentTenantId() } });
   return rows.map((f) => ({ id: f.id, name: f.name, category: f.category, blurb: f.blurb, attributeCount: f.attributeCount, active: f.active }));
 }
 
 export async function getWorkflows() {
-  const rows = await prisma.workflowConfig.findMany();
+  const rows = await prisma.workflowConfig.findMany({ where: { tenantId: await currentTenantId() } });
   return rows.map((w) => ({ artifactType: w.artifactType, label: w.label, states: w.states as string[], approvalChain: w.approvalChain as string[] }));
 }
 
 export async function getStandards() {
-  const rows = await prisma.standardRef.findMany();
+  const rows = await prisma.standardRef.findMany({ where: { OR: [{ tenantId: null }, { tenantId: await currentTenantId() }] } });
   return rows.map((s) => ({ code: s.code, title: s.title, scope: s.scope as "global" | "tenant" }));
 }
 
 export async function getRateCards() {
-  const rows = await prisma.rateCard.findMany({ orderBy: { effectiveFrom: "desc" } });
+  const rows = await prisma.rateCard.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { effectiveFrom: "desc" } });
   return rows.map((r) => ({ effectiveFrom: r.effectiveFrom, label: r.label, active: r.active, rates: r.rates as Record<string, { label: string; rate: number; unit: string }> }));
 }
 

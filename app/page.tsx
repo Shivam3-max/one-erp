@@ -10,17 +10,19 @@ import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import {
   getPortfolioMetrics, getStageDistribution, getProjects,
-  getStaleArtifacts, getActivityFeed, getCustomerMap, getUserMap,
+  getStaleArtifacts, getActivityFeed, getCustomerMap, getUserMap, getTenant,
 } from "@/lib/data";
+import { getCurrentUser } from "@/lib/auth";
 import { money, shortDate, relDate } from "@/lib/format";
 import { healthTone, healthLabel } from "@/lib/status";
+import { ACCESS_LABEL } from "@/lib/permissions";
 
 const inr = (amount: number) => money({ amount, currency: "INR" });
 
 export default async function OverviewPage() {
-  const [m, stageDistAll, projects, stale, feed, customerMap, userMap] = await Promise.all([
+  const [m, stageDistAll, projects, stale, feed, customerMap, userMap, tenant, user] = await Promise.all([
     getPortfolioMetrics(), getStageDistribution(), getProjects(),
-    getStaleArtifacts(), getActivityFeed(7), getCustomerMap(), getUserMap(),
+    getStaleArtifacts(), getActivityFeed(7), getCustomerMap(), getUserMap(), getTenant(), getCurrentUser(),
   ]);
   const stageDist = stageDistAll.filter((s) => s.count > 0);
   const maxVal = Math.max(...stageDist.map((s) => s.value), 1);
@@ -31,7 +33,7 @@ export default async function OverviewPage() {
   return (
     <>
       <PageHeader
-        eyebrow="CANDRON Electricals · Director view"
+        eyebrow={`${tenant?.name ?? "Workspace"} · ${user ? ACCESS_LABEL[user.accessLevel] ?? user.role : "Overview"}`}
         title="Overview"
         subtitle="Every inquiry is a project. Every project moves along one spine."
         action={
