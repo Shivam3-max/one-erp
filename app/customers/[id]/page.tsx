@@ -5,6 +5,7 @@ import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { getCustomer, getUserMap, getProjects, getOpportunities, getContactsFor, getCommsFor } from "@/lib/data";
+import type { CommRecord } from "@/lib/data";
 import { STAGE_LABEL } from "@/lib/mock/pipeline";
 import { LogCommButton } from "@/components/crm/LogCommButton";
 import { money, shortDate, relDate } from "@/lib/format";
@@ -12,7 +13,12 @@ import { healthTone, healthLabel, titleCase } from "@/lib/status";
 
 const inr = (n: number) => money({ amount: n, currency: "INR" });
 
-const COMM_ICON = { email: Mail, call: PhoneCall, meeting: Users2, "site-visit": MapPin } as const;
+const COMM_ICON: Record<CommRecord["type"], typeof Mail> = {
+  email: Mail,
+  call: PhoneCall,
+  meeting: Users2,
+  "site-visit": MapPin,
+};
 
 export default async function CustomerDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -82,7 +88,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
             <CardHeader title="Communication history" subtitle="Emails · calls · meetings · site visits"
               action={<LogCommButton customerId={id} />} />
             <div className="space-y-0 px-5 pb-5">
-              {comms.map((c, i) => {
+              {comms.map((c: CommRecord, i) => {
                 const Icon = COMM_ICON[c.type];
                 const actor = userMap[c.userId];
                 return (

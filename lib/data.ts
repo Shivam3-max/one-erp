@@ -7,6 +7,102 @@ import type {
   ArtifactType, ArtifactStatus, ProjectHealth, ProjectPriority, ComplianceStatus,
 } from "./types";
 import type { Opportunity } from "./mock/pipeline";
+import type { Quotation } from "./mock/quotations";
+import type { ProdStage, WOStatus, WorkOrder as ManufacturingWorkOrder } from "./mock/manufacturing";
+import type { ReqStatus, MaterialReq, Vendor, VendorQuote } from "./mock/procurement";
+import type { TestCat, TestResult, TestUnit } from "./mock/testing";
+
+export interface PortfolioMetrics {
+  pipelineValue: number;
+  orderBook: number;
+  activeCount: number;
+  atRiskCount: number;
+  avgMargin: number;
+  staleCount: number;
+  wonThisQuarter: number;
+}
+
+export interface StageDistributionItem {
+  key: StageKey;
+  label: string;
+  count: number;
+  value: number;
+}
+
+export interface StaleArtifactEntry {
+  artifact: Artifact;
+  project: Project;
+}
+
+export interface ActivityFeedItem {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  actorId: string;
+  summary: string;
+  artifactId: string;
+  artifactType: ArtifactType;
+  at: string;
+  stale?: boolean;
+}
+
+export interface ContactRecord {
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  primary: boolean;
+}
+
+export interface CommRecord {
+  id: string;
+  type: "email" | "call" | "meeting" | "site-visit";
+  subject: string;
+  summary: string;
+  userId: string;
+  date: string;
+}
+
+export interface ComplianceItemRecord {
+  id: string;
+  clause: string;
+  category: string;
+  requirement: string;
+  companySpec: string;
+  status: ComplianceStatus;
+  deviation?: string;
+  engineerComment?: string;
+  engineerId: string;
+}
+
+export interface FamilyRecord {
+  id: string;
+  name: string;
+  category: string;
+  blurb: string;
+  attributeCount: number;
+  active: boolean;
+}
+
+export interface WorkflowRecord {
+  artifactType: string;
+  label: string;
+  states: string[];
+  approvalChain: string[];
+}
+
+export interface StandardRecord {
+  code: string;
+  title: string;
+  scope: "global" | "tenant";
+}
+
+export interface RateCardRecord {
+  effectiveFrom: string;
+  label: string;
+  active: boolean;
+  rates: Record<string, { label: string; rate: number; unit: string }>;
+}
 
 /* ---------------- masters (cached per request) ---------------- */
 
