@@ -6,6 +6,7 @@ import type {
   Tenant, User, Customer, Project, Artifact, ProjectStage, StageKey, StageState,
   ArtifactType, ArtifactStatus, ProjectHealth, ProjectPriority, CustomerType,
 } from "./types";
+import type { Opportunity } from "./mock/pipeline";
 
 /* ---------------- masters (cached per request) ---------------- */
 
@@ -142,10 +143,10 @@ export async function getActivityFeed(limit = 12) {
 
 /* ---------------- sales / pipeline ---------------- */
 
-export async function getOpportunities() {
+export async function getOpportunities(): Promise<Opportunity[]> {
   const rows = await prisma.opportunity.findMany({ where: { tenantId: await currentTenantId() } });
   return rows.map((o) => ({
-    id: o.id, tenantId: o.tenantId, title: o.title, customerId: o.customerId, stage: o.stage,
+    id: o.id, title: o.title, customerId: o.customerId, stage: o.stage as Opportunity["stage"],
     value: o.value, ownerId: o.ownerId, expectedClose: o.expectedClose, source: o.source,
     projectId: o.projectId ?? undefined, lastActivity: o.lastActivity,
   }));
