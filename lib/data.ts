@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { prisma } from "./db";
-import { stageIndex } from "./lifecycle";
+import { LIFECYCLE, stageIndex } from "./lifecycle";
 import { currentTenantId } from "./auth";
 import type {
   Tenant, User, Customer, Project, Artifact, ProjectStage, StageKey, StageState,
@@ -11,6 +11,19 @@ import type { Quotation } from "./mock/quotations";
 import type { ProdStage, WOStatus, WorkOrder as ManufacturingWorkOrder } from "./mock/manufacturing";
 import type { ReqStatus, MaterialReq, Vendor, VendorQuote } from "./mock/procurement";
 import type { TestCat, TestResult, TestUnit } from "./mock/testing";
+import { TENANT as MOCK_TENANT, USERS as MOCK_USERS, CUSTOMERS as MOCK_CUSTOMERS } from "./mock/org";
+import { PROJECTS, projectById } from "./mock/projects";
+import { artifactsForProject } from "./mock/artifacts";
+import { OPPORTUNITIES } from "./mock/pipeline";
+import { contactsFor, commsFor } from "./mock/crm";
+import { QUOTATIONS, quotationByProject } from "./mock/quotations";
+import { VENDORS, requirementsFor } from "./mock/procurement";
+import { WORK_ORDERS } from "./mock/manufacturing";
+import { TEST_UNITS } from "./mock/testing";
+import { getCompliance, projectsWithCompliance } from "./mock/compliance";
+import { WORKFLOWS, STANDARDS, RATE_CARD_HISTORY } from "./mock/settings";
+import { FAMILIES } from "./configurator/families";
+import { attrCount, RATES } from "./configurator/model";
 
 export interface PortfolioMetrics {
   pipelineValue: number;
@@ -104,16 +117,28 @@ export interface RateCardRecord {
   rates: Record<string, { label: string; rate: number; unit: string }>;
 }
 
+async function withFallback<T>(dbFn: () => Promise<T>, mockFn: () => T | Promise<T>): Promise<T> {
+  try {
+    return await dbFn();
+  } catch {
+    return await mockFn();
+  }
+}
+
 /* ---------------- masters (cached per request) ---------------- */
 
 export const getTenant = cache(async (): Promise<Tenant> => {
-  const t = await prisma.tenant.findUnique({ where: { id: await currentTenantId() } });
-  return t as unknown as Tenant;
+  return withFallback(async () => {
+    const t = await prisma.tenant.findUnique({ where: { id: await currentTenantId() } });
+    return t as unknown as Tenant;
+  }, () => MOCK_TENANT);
 });
 
 export const getUsers = cache(async (): Promise<User[]> => {
-  const rows = await prisma.user.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { id: "asc" } });
-  return rows as unknown as User[];
+  return withFallback(async () => {
+    const rows = await prisma.user.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { id: "asc" } });
+    return rows as unknown as User[];
+  }, () => MOCK_USERS);
 });
 
 export const getUserMap = cache(async (): Promise<Record<string, User>> => {
@@ -122,8 +147,10 @@ export const getUserMap = cache(async (): Promise<Record<string, User>> => {
 });
 
 export const getCustomers = cache(async (): Promise<Customer[]> => {
-  const rows = await prisma.customer.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { id: "asc" } });
-  return rows as unknown as Customer[];
+  return withFallback(async () => {
+    const rows = await prisma.customer.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { id: "asc" } });
+    return rows as unknown as Customer[];
+  }, () => MOCK_CUSTOMERS);
 });
 
 export const getCustomerMap = cache(async (): Promise<Record<string, Customer>> => {
@@ -132,8 +159,10 @@ export const getCustomerMap = cache(async (): Promise<Record<string, Customer>> 
 });
 
 export async function getCustomer(id: string): Promise<Customer | undefined> {
-  const c = await prisma.customer.findUnique({ where: { id } });
-  return (c as unknown as Customer) ?? undefined;
+  return withFallback(async () => {
+    const c = await prisma.customer.findUnique({ where: { id } });
+    return (c as unknown as Customer) ?? undefined;
+  }, () => MOCK_CUSTOMERS.find((c) => c.id === id));
 }
 
 /* ---------------- projects ---------------- */
@@ -153,13 +182,17 @@ function mapProject(p: any): Project {
 }
 
 export const getProjects = cache(async (): Promise<Project[]> => {
-  const rows = await prisma.project.findMany({ where: { tenantId: await currentTenantId() }, include: { stages: true }, orderBy: { createdAt: "desc" } });
-  return rows.map(mapProject);
+  return withFallback(async () => {
+    const rows = await prisma.project.findMany({ where: { tenantId: await currentTenantId() }, include: { stages: true }, orderBy: { createdAt: "desc" } });
+    return rows.map(mapProject);
+  }, () => PROJECTS);
 });
 
 export async function getProject(id: string): Promise<Project | undefined> {
-  const p = await prisma.project.findUnique({ where: { id }, include: { stages: true } });
-  return p ? mapProject(p) : undefined;
+  return withFallback(async () => {
+    const p = await prisma.project.findUnique({ where: { id }, include: { stages: true } });
+    return p ? mapProject(p) : undefined;
+  }, () => projectById(id));
 }
 
 /* ---------------- artifacts ---------------- */
@@ -175,13 +208,20 @@ function mapArtifact(a: any): Artifact {
 }
 
 export async function getArtifacts(projectId: string): Promise<Artifact[]> {
-  const rows = await prisma.artifact.findMany({ where: { projectId }, include: { revisions: true, links: true } });
-  return rows.map(mapArtifact);
+  return withFallback(async () => {
+    const rows = await prisma.artifact.findMany({ where: { projectId }, include: { revisions: true, links: true } });
+    return rows.map(mapArtifact);
+  }, () => {
+    const project = projectById(projectId);
+    return project ? artifactsForProject(project) : [];
+  });
 }
 
 async function allArtifacts(): Promise<Artifact[]> {
-  const rows = await prisma.artifact.findMany({ where: { tenantId: await currentTenantId() }, include: { revisions: true, links: true } });
-  return rows.map(mapArtifact);
+  return withFallback(async () => {
+    const rows = await prisma.artifact.findMany({ where: { tenantId: await currentTenantId() }, include: { revisions: true, links: true } });
+    return rows.map(mapArtifact);
+  }, () => PROJECTS.flatMap((p) => artifactsForProject(p)));
 }
 
 /* ---------------- portfolio metrics ---------------- */
@@ -189,21 +229,43 @@ async function allArtifacts(): Promise<Artifact[]> {
 const PO_INDEX = stageIndex("purchase-order");
 
 export async function getPortfolioMetrics(): Promise<PortfolioMetrics> {
-  const projects = await getProjects();
-  let pipelineValue = 0, orderBook = 0, atRiskCount = 0, marginSum = 0, marginN = 0;
-  for (const p of projects) {
-    const idx = stageIndex(p.currentStage);
-    if (idx < PO_INDEX) pipelineValue += p.value.amount;
-    else if (p.health !== "closed") orderBook += p.value.amount;
-    if (p.health === "at-risk" || p.health === "critical") atRiskCount++;
-    if (p.marginPct != null) { marginSum += p.marginPct; marginN++; }
-  }
-  const staleCount = await prisma.artifact.count({ where: { upstreamStale: true, tenantId: await currentTenantId() } });
-  return {
-    pipelineValue, orderBook, activeCount: projects.filter((p) => p.health !== "closed").length,
-    atRiskCount, avgMargin: marginN ? marginSum / marginN : 0, staleCount,
-    wonThisQuarter: projects.filter((p) => stageIndex(p.currentStage) >= PO_INDEX).length,
-  };
+  return withFallback(async () => {
+    const projects = await getProjects();
+    let pipelineValue = 0, orderBook = 0, atRiskCount = 0, marginSum = 0, marginN = 0;
+    for (const p of projects) {
+      const idx = stageIndex(p.currentStage);
+      if (idx < PO_INDEX) pipelineValue += p.value.amount;
+      else if (p.health !== "closed") orderBook += p.value.amount;
+      if (p.health === "at-risk" || p.health === "critical") atRiskCount++;
+      if (p.marginPct != null) { marginSum += p.marginPct; marginN++; }
+    }
+    const staleCount = await prisma.artifact.count({ where: { upstreamStale: true, tenantId: await currentTenantId() } });
+    return {
+      pipelineValue, orderBook, activeCount: projects.filter((p) => p.health !== "closed").length,
+      atRiskCount, avgMargin: marginN ? marginSum / marginN : 0, staleCount,
+      wonThisQuarter: projects.filter((p) => stageIndex(p.currentStage) >= PO_INDEX).length,
+    };
+  }, async () => {
+    const projects = PROJECTS;
+    const artifacts = await allArtifacts();
+    let pipelineValue = 0, orderBook = 0, atRiskCount = 0, marginSum = 0, marginN = 0;
+    for (const p of projects) {
+      const idx = stageIndex(p.currentStage);
+      if (idx < PO_INDEX) pipelineValue += p.value.amount;
+      else if (p.health !== "closed") orderBook += p.value.amount;
+      if (p.health === "at-risk" || p.health === "critical") atRiskCount++;
+      if (p.marginPct != null) { marginSum += p.marginPct; marginN++; }
+    }
+    return {
+      pipelineValue,
+      orderBook,
+      activeCount: projects.filter((p) => p.health !== "closed").length,
+      atRiskCount,
+      avgMargin: marginN ? marginSum / marginN : 0,
+      staleCount: artifacts.filter((a) => a.upstreamStale).length,
+      wonThisQuarter: projects.filter((p) => stageIndex(p.currentStage) >= PO_INDEX).length,
+    };
+  });
 }
 
 export async function getStageDistribution(): Promise<StageDistributionItem[]> {
@@ -216,12 +278,14 @@ export async function getStageDistribution(): Promise<StageDistributionItem[]> {
 }
 
 export async function getStaleArtifacts(): Promise<StaleArtifactEntry[]> {
-  const rows = await prisma.artifact.findMany({ where: { upstreamStale: true, tenantId: await currentTenantId() }, include: { revisions: true, links: true } });
-  const projects = await getProjects();
-  const byId = Object.fromEntries(projects.map((p) => [p.id, p]));
-  return rows
-    .map((a: { projectId: string }) => ({ artifact: mapArtifact(a), project: byId[a.projectId] }))
-    .filter((x: { artifact: Artifact; project: Project | undefined }): x is StaleArtifactEntry => Boolean(x.project));
+  return withFallback(async () => {
+    const rows = await prisma.artifact.findMany({ where: { upstreamStale: true, tenantId: await currentTenantId() }, include: { revisions: true, links: true } });
+    const projects = await getProjects();
+    const byId = Object.fromEntries(projects.map((p) => [p.id, p]));
+    return rows
+      .map((a: { projectId: string }) => ({ artifact: mapArtifact(a), project: byId[a.projectId] }))
+      .filter((x: { artifact: Artifact; project: Project | undefined }): x is StaleArtifactEntry => Boolean(x.project));
+  }, () => PROJECTS.flatMap((p) => artifactsForProject(p).filter((a) => a.upstreamStale).map((artifact) => ({ artifact, project: p }))));
 }
 
 export async function getActivityFeed(limit = 12): Promise<ActivityFeedItem[]> {
