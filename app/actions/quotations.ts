@@ -17,14 +17,14 @@ export async function setApprovalStatus(projectId: string, role: string, status:
   await authorize("quotation.approve");
   const q = await prisma.quotation.findUnique({ where: { projectId }, include: { approvals: true } });
   if (!q) return { ok: false };
-  const appr = q.approvals.find((a) => a.role === role);
+  const appr = q.approvals.find((a: { role: string }) => a.role === role);
   if (!appr) return { ok: false };
   await prisma.quoteApproval.update({ where: { id: appr.id }, data: { status, date: status === "pending" ? null : today() } });
   // if any step rejected, revert quote to draft; if all approved, mark issued
   const fresh = await prisma.quoteApproval.findMany({ where: { quotationId: q.id } });
-  if (fresh.some((a) => a.status === "rejected")) {
+  if (fresh.some((a: { status: string }) => a.status === "rejected")) {
     await prisma.quotation.update({ where: { id: q.id }, data: { status: "draft", updatedAt: today() } });
-  } else if (fresh.every((a) => a.status === "approved") && q.status === "draft") {
+  } else if (fresh.every((a: { status: string }) => a.status === "approved") && q.status === "draft") {
     await prisma.quotation.update({ where: { id: q.id }, data: { status: "issued", updatedAt: today() } });
   }
   revalidatePath(`/quotations/${projectId}`);

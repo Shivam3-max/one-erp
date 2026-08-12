@@ -19,7 +19,7 @@ const REQ_ORDER = ["required", "rfq", "po", "received"];
 
 async function nextPoNo() {
   const withPo = await prisma.materialReq.findMany({ where: { poNo: { not: null } }, select: { poNo: true } });
-  const maxN = withPo.reduce((m, x) => {
+  const maxN = withPo.reduce((m: number, x: { poNo: string | null }) => {
     const n = parseInt((x.poNo || "").split("-").pop() || "0", 10);
     return Math.max(m, Number.isNaN(n) ? 0 : n);
   }, 4400);
@@ -34,8 +34,8 @@ export async function raiseRFQ(reqId: string) {
   const vendors = await prisma.vendor.findMany({ where: { tenantId: user.tenantId } });
   // Primary vendors for this category first, then padded with alternates so the
   // buyer always gets a genuine multi-vendor comparison (min 2, max 3 quotes).
-  const sameCat = vendors.filter((v) => v.category === r.category);
-  const others = vendors.filter((v) => v.category !== r.category).sort((a, b) => b.onTimePct - a.onTimePct);
+  const sameCat = vendors.filter((v: { category: string }) => v.category === r.category);
+  const others = vendors.filter((v: { category: string }) => v.category !== r.category).sort((a: { onTimePct: number }, b: { onTimePct: number }) => b.onTimePct - a.onTimePct);
   const pool = [...sameCat, ...others].slice(0, 3);
   const quotes = pool.map((v, i) => ({
     vendorId: v.id,
@@ -74,7 +74,7 @@ export async function advanceRequirement(id: string) {
 
   if (next === "po" && !r.poNo) {
     const withPo = await prisma.materialReq.findMany({ where: { poNo: { not: null } }, select: { poNo: true } });
-    const maxN = withPo.reduce((m, x) => {
+    const maxN = withPo.reduce((m: number, x: { poNo: string | null }) => {
       const n = parseInt((x.poNo || "").split("-").pop() || "0", 10);
       return Math.max(m, Number.isNaN(n) ? 0 : n);
     }, 4400);
@@ -122,9 +122,9 @@ export async function recordTestResult(testRecordId: string, result: "pass" | "f
 
   const unit = await prisma.testUnit.findUnique({ where: { id: tr.testUnitId }, include: { tests: true } });
   if (unit) {
-    const others = unit.tests.filter((t) => t.id !== testRecordId);
-    const anyPending = others.some((t) => t.result === "pending");
-    const anyFail = result === "fail" || others.some((t) => t.result === "fail");
+    const others = unit.tests.filter((t: { id: string }) => t.id !== testRecordId);
+    const anyPending = others.some((t: { result: string }) => t.result === "pending");
+    const anyFail = result === "fail" || others.some((t: { result: string }) => t.result === "fail");
     if (!anyPending && !anyFail && !unit.certIssued) {
       await prisma.testUnit.update({ where: { id: unit.id }, data: { certIssued: true, issuedAt: today() } });
     } else if ((anyPending || anyFail) && unit.certIssued) {

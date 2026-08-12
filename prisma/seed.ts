@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { TENANT, USERS, CUSTOMERS } from "../lib/mock/org";
 import { PROJECTS } from "../lib/mock/projects";
@@ -56,7 +56,7 @@ async function main() {
   await prisma.vendor.createMany({ data: VENDORS.map((v) => ({ id: v.id, tenantId: T, name: v.name, category: v.category, rating: v.rating, location: v.location, onTimePct: v.onTimePct })) });
   await prisma.standardRef.createMany({ data: STANDARDS.map((s) => ({ tenantId: s.scope === "tenant" ? T : null, code: s.code, title: s.title, scope: s.scope })) });
   await prisma.workflowConfig.createMany({ data: WORKFLOWS.map((w) => ({ tenantId: T, artifactType: w.artifactType, label: w.label, states: w.states, approvalChain: w.approvalChain })) });
-  await prisma.rateCard.createMany({ data: RATE_CARD_HISTORY.map((v) => ({ tenantId: T, effectiveFrom: v.effectiveFrom, label: v.label, active: v.active ?? false, rates: v.active ? RATES : {} })) });
+  await prisma.rateCard.createMany({ data: RATE_CARD_HISTORY.map((v) => ({ tenantId: T, effectiveFrom: v.effectiveFrom, label: v.label, active: v.active ?? false, rates: (v.active ? RATES : {}) as unknown as Prisma.InputJsonValue })) });
 
   // pipeline
   await prisma.opportunity.createMany({ data: OPPORTUNITIES.map((o) => ({ id: o.id, tenantId: T, title: o.title, customerId: o.customerId, stage: o.stage, value: o.value, ownerId: o.ownerId, expectedClose: o.expectedClose, source: o.source, projectId: o.projectId ?? null, lastActivity: o.lastActivity })) });
