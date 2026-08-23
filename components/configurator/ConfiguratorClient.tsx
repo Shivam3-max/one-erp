@@ -9,14 +9,14 @@ import { cn } from "@/lib/cn";
 import { money } from "@/lib/format";
 import { FAMILIES } from "@/lib/configurator/families";
 import {
-  initValues, computeCost, attrCount, rateOf, RATE_CARD_DATE,
-  type Values, type AttrDef, type FamilyDef,
+  initValues, computeCost, attrCount, rateOf, DEFAULT_RATE_BOOK,
+  type Values, type AttrDef, type FamilyDef, type RateBook,
 } from "@/lib/configurator/model";
 import { SaveToProjectButton } from "./SaveToProjectButton";
 
 const inr = (n: number) => money({ amount: Math.round(n), currency: "INR" });
 
-export function ConfiguratorClient({ projects }: { projects: { id: string; title: string }[] }) {
+export function ConfiguratorClient({ projects, rateBook = DEFAULT_RATE_BOOK }: { projects: { id: string; title: string }[]; rateBook?: RateBook }) {
   const [familyId, setFamilyId] = useState(FAMILIES[0].id);
   const family = FAMILIES.find((f) => f.id === familyId)!;
   const [values, setValues] = useState<Values>(() => initValues(FAMILIES[0]));
@@ -42,7 +42,7 @@ export function ConfiguratorClient({ projects }: { projects: { id: string; title
   const derived = useMemo(() => family.derive(effective), [family, effective]);
   const issues = useMemo(() => family.validate(effective, derived), [family, effective, derived]);
   const bom = useMemo(() => family.emitBom(effective, derived), [family, effective, derived]);
-  const cost = useMemo(() => computeCost(bom, effective, margin), [bom, effective, margin]);
+  const cost = useMemo(() => computeCost(bom, effective, margin, rateBook), [bom, effective, margin, rateBook]);
   const sheet = useMemo(() => family.datasheet(effective, derived), [family, effective, derived]);
 
   const errors = issues.filter((i) => i.level === "error");
@@ -132,12 +132,12 @@ export function ConfiguratorClient({ projects }: { projects: { id: string; title
 
             <div className="mt-3 space-y-1.5 border-t border-line-2 pt-3">
               <CostRow label="Material" amount={cost.material} />
-              <CostRow label="Labour (14%)" amount={cost.labour} />
-              <CostRow label="Overhead (9%)" amount={cost.overhead} />
+              <CostRow label={`Labour (${rateBook.factors.labourPct}%)`} amount={cost.labour} />
+              <CostRow label={`Overhead (${rateBook.factors.overheadPct}%)`} amount={cost.overhead} />
               <CostRow label="Testing" amount={cost.testing} />
               <CostRow label="Packing · freight · insurance" amount={cost.logistics} />
             </div>
-            <div className="mt-1.5 text-right text-[10px] text-ink-4">rate card {RATE_CARD_DATE}</div>
+            <div className="mt-1.5 text-right text-[10px] text-ink-4">rate card · {rateBook.label} ({rateBook.effectiveFrom})</div>
           </div>
 
           {/* Validation */}
@@ -177,7 +177,7 @@ export function ConfiguratorClient({ projects }: { projects: { id: string; title
                   <span className="w-16 shrink-0 truncate rounded bg-surface-3 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-ink-4">{l.category}</span>
                   <span className="min-w-0 flex-1 truncate text-[12px] text-ink-2">{l.description}</span>
                   <span className="tnum shrink-0 font-mono text-[11px] text-ink-3">{l.qty.toLocaleString("en-IN")} {l.unit}</span>
-                  <span className="tnum w-16 shrink-0 text-right font-mono text-[11.5px] font-semibold text-ink">{inr(l.qty * rateOf(l.rateKey))}</span>
+                  <span className="tnum w-16 shrink-0 text-right font-mono text-[11.5px] font-semibold text-ink">{inr(l.qty * rateOf(l.rateKey, rateBook.rates))}</span>
                 </div>
               ))}
             </div>

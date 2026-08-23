@@ -12,7 +12,7 @@ import { getCompliance, projectsWithCompliance } from "../lib/mock/compliance";
 import { QUOTATIONS } from "../lib/mock/quotations";
 import { WORKFLOWS, STANDARDS, RATE_CARD_HISTORY } from "../lib/mock/settings";
 import { FAMILIES } from "../lib/configurator/families";
-import { attrCount, RATES } from "../lib/configurator/model";
+import { attrCount, RATES, DEFAULT_FACTORS } from "../lib/configurator/model";
 import { stageIndex } from "../lib/lifecycle";
 
 const prisma = new PrismaClient();
@@ -56,7 +56,11 @@ async function main() {
   await prisma.vendor.createMany({ data: VENDORS.map((v) => ({ id: v.id, tenantId: T, name: v.name, category: v.category, rating: v.rating, location: v.location, onTimePct: v.onTimePct })) });
   await prisma.standardRef.createMany({ data: STANDARDS.map((s) => ({ tenantId: s.scope === "tenant" ? T : null, code: s.code, title: s.title, scope: s.scope })) });
   await prisma.workflowConfig.createMany({ data: WORKFLOWS.map((w) => ({ tenantId: T, artifactType: w.artifactType, label: w.label, states: w.states, approvalChain: w.approvalChain })) });
-  await prisma.rateCard.createMany({ data: RATE_CARD_HISTORY.map((v) => ({ tenantId: T, effectiveFrom: v.effectiveFrom, label: v.label, active: v.active ?? false, rates: v.active ? RATES : {} })) });
+  await prisma.rateCard.createMany({ data: RATE_CARD_HISTORY.map((v, i) => {
+    const scale = 1 - i * 0.05; // older cards ran cheaper — copper/CRGO have risen since
+    const rates = Object.fromEntries(Object.entries(RATES).map(([k, r]) => [k, { ...r, rate: Math.round(r.rate * scale) }]));
+    return { tenantId: T, effectiveFrom: v.effectiveFrom, label: v.label, active: v.active ?? false, rates, factors: DEFAULT_FACTORS as Record<string, number> };
+  }) });
 
   // pipeline
   await prisma.opportunity.createMany({ data: OPPORTUNITIES.map((o) => ({ id: o.id, tenantId: T, title: o.title, customerId: o.customerId, stage: o.stage, value: o.value, ownerId: o.ownerId, expectedClose: o.expectedClose, source: o.source, projectId: o.projectId ?? null, lastActivity: o.lastActivity })) });

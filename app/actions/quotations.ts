@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can, type Perm } from "@/lib/permissions";
+import { getCommercialConfig } from "@/lib/data";
+import { effectiveCommercial, type CustomerCommercial } from "@/lib/commercial";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -89,23 +91,31 @@ export async function createQuotationForProject(projectId: string) {
   const num = projectId.split("-").pop() ?? "0000";
   const qtyMatch = p.productSummary.match(/^(\d+)\s*[×x]/);
   const qty = qtyMatch ? Number(qtyMatch[1]) : 1;
-  const exWorksUnit = Math.round((p.value * 0.86) / qty);
+
+  // effective commercial terms = tenant defaults + this customer's overrides
+  const base = await getCommercialConfig();
+  const customer = await prisma.customer.findUnique({ where: { id: p.customerId }, select: { commercial: true } });
+  const cust = (customer?.commercial as CustomerCommercial | null) ?? null;
+  const cc = effectiveCommercial(base, cust);
+  const discountPct = cust?.discountPct ?? 0;
+
+  const exWorksUnit = Math.round(((p.value * 0.86) / qty) * (1 - discountPct / 100));
   const subtotal = qty * exWorksUnit;
 
   await prisma.quotation.create({
     data: {
       tenantId, projectId, customerId: p.customerId, code: `CAN/Q/2026/${num}`, revision: 1, status: "draft",
-      validityDays: 60, ownerId: "U-05", product: p.productSummary,
+      validityDays: cc.validityDays, ownerId: "U-05", product: p.productSummary,
       lineItems: [{ desc: p.productSummary, qty, unit: "no.", unitPrice: exWorksUnit }],
-      packing: Math.round(subtotal * 0.012), freight: Math.round(subtotal * 0.02), insurance: Math.round(subtotal * 0.006), gstPct: 18,
-      paymentTerms: "20% advance · 70% against dispatch · 10% after commissioning", deliveryWeeks: 20,
+      packing: Math.round(subtotal * cc.packingPct / 100), freight: Math.round(subtotal * cc.freightPct / 100), insurance: Math.round(subtotal * cc.insurancePct / 100), gstPct: cc.gstPct,
+      paymentTerms: cc.paymentTerms, deliveryWeeks: 20,
       scope: ["Design, manufacture & routine testing", "Supply ex-works / FOR site", "Installation supervision", "Commissioning assistance", "Test certificates & O&M documentation", "Warranty support"],
       exclusions: ["Civil foundations & grouting", "HV/LV cabling & terminations", "Unloading & storage at site", "Statutory & utility approvals", "Any taxes/duties beyond those stated"],
       terms: [
         { label: "Delivery", value: "20 weeks from approved drawings & advance" },
-        { label: "Payment", value: "20 / 70 / 10 (advance / dispatch / commissioning)" },
-        { label: "Validity", value: "60 days from date of offer" },
-        { label: "Warranty", value: "24 months from commissioning" },
+        { label: "Payment", value: cc.paymentTerms },
+        { label: "Validity", value: `${cc.validityDays} days from date of offer` },
+        { label: "Warranty", value: `${cc.warrantyMonths} months from commissioning` },
         { label: "Price basis", value: "Firm, ex-works; taxes extra at actuals" },
       ],
       blocks: ALL_BLOCKS.map((b) => ({ ...b, included: true })),

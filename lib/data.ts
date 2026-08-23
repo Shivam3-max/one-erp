@@ -2,6 +2,8 @@ import { cache } from "react";
 import { prisma } from "./db";
 import { stageIndex } from "./lifecycle";
 import { currentTenantId } from "./auth";
+import { DEFAULT_RATE_BOOK, DEFAULT_FACTORS, RATES, type RateBook, type Rate, type CostFactors } from "./configurator/model";
+import { DEFAULT_COMMERCIAL, type CommercialConfig } from "./commercial";
 import type {
   Tenant, User, Customer, Project, Artifact, ProjectStage, StageKey, StageState,
   ArtifactType, ArtifactStatus, ProjectHealth, ProjectPriority, CustomerType,
@@ -254,7 +256,41 @@ export async function getStandards() {
 
 export async function getRateCards() {
   const rows = await prisma.rateCard.findMany({ where: { tenantId: await currentTenantId() }, orderBy: { effectiveFrom: "desc" } });
-  return rows.map((r) => ({ effectiveFrom: r.effectiveFrom, label: r.label, active: r.active, rates: r.rates as Record<string, { label: string; rate: number; unit: string }> }));
+  return rows.map((r) => ({
+    id: r.id,
+    effectiveFrom: r.effectiveFrom,
+    label: r.label,
+    active: r.active,
+    rates: (r.rates ?? {}) as Record<string, { label: string; rate: number; unit: string }>,
+    factors: { ...DEFAULT_FACTORS, ...((r.factors as Partial<CostFactors> | null) ?? {}) },
+  }));
 }
+
+/** The ACTIVE rate card as a full RateBook the cost engine consumes — falls back to built-ins. */
+export const getActiveRateBook = cache(async (): Promise<RateBook> => {
+  const active = await prisma.rateCard.findFirst({ where: { tenantId: await currentTenantId(), active: true } });
+  if (!active) return DEFAULT_RATE_BOOK;
+  const rates = (active.rates as Record<string, Rate> | null) ?? {};
+  const hasRates = Object.keys(rates).length > 0;
+  return {
+    // merge over built-ins so every rateKey resolves even on a partial card
+    rates: hasRates ? { ...RATES, ...rates } : RATES,
+    factors: { ...DEFAULT_FACTORS, ...((active.factors as Partial<CostFactors> | null) ?? {}) },
+    label: active.label,
+    effectiveFrom: active.effectiveFrom,
+  };
+});
+
+/* ---------------- tenant config (commercial, quote template, clause libraries) ---------------- */
+
+export const getTenantConfig = cache(async (): Promise<Record<string, unknown>> => {
+  const row = await prisma.tenantConfig.findUnique({ where: { tenantId: await currentTenantId() } });
+  return ((row?.data as Record<string, unknown> | null) ?? {});
+});
+
+export const getCommercialConfig = cache(async (): Promise<CommercialConfig> => {
+  const cfg = await getTenantConfig();
+  return { ...DEFAULT_COMMERCIAL, ...((cfg.commercial as Partial<CommercialConfig>) ?? {}) };
+});
 
 export { stageIndex };

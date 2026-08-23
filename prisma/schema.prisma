@@ -31,17 +31,18 @@ model User {
 }
 
 model Customer {
-  id       String    @id
-  tenantId String
-  name     String
-  type     String
-  city     String
-  state    String
-  country  String
-  gstin    String?
-  rating   String
-  since    String
-  contacts Contact[]
+  id         String    @id
+  tenantId   String
+  name       String
+  type       String
+  city       String
+  state      String
+  country    String
+  gstin      String?
+  rating     String
+  since      String
+  commercial Json?
+  contacts   Contact[]
 }
 
 model Contact {
@@ -160,6 +161,16 @@ model ProductFamily {
   blurb          String
   attributeCount Int
   active         Boolean @default(true)
+  schema         Json?
+}
+
+// One flexible per-tenant configuration blob: commercial defaults, quotation
+// template + clause libraries, units, tax codes. Keeps the product endlessly
+// customizable without a migration per knob.
+model TenantConfig {
+  id       String @id @default(cuid())
+  tenantId String @unique
+  data     Json
 }
 
 model Configuration {
@@ -327,6 +338,7 @@ model RateCard {
   label         String
   active        Boolean @default(false)
   rates         Json
+  factors       Json?
 }
 
 model Activity {

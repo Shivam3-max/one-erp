@@ -5,14 +5,15 @@ import { TrendingUp, TrendingDown, TriangleAlert, CheckCircle2, Layers, History,
 import { cn } from "@/lib/cn";
 import { money, shortDate } from "@/lib/format";
 import { FAMILIES } from "@/lib/configurator/families";
-import { initValues, computeCost, rateOf, type Values } from "@/lib/configurator/model";
+import { initValues, computeCost, rateOf, DEFAULT_RATE_BOOK, type Values, type RateBook } from "@/lib/configurator/model";
+import { DEFAULT_COMMERCIAL, type CommercialConfig } from "@/lib/commercial";
 import { similarBenchmarks, COMMODITIES, mean } from "@/lib/mock/estimation";
 import { SaveEstimateButton } from "./SaveEstimateButton";
 
 const inr = (n: number) => money({ amount: Math.round(n), currency: "INR" });
 const pct = (x: number) => `${x >= 0 ? "+" : ""}${(x * 100).toFixed(1)}%`;
 
-export function EstimationClient({ projects }: { projects: { id: string; title: string }[] }) {
+export function EstimationClient({ projects, rateBook = DEFAULT_RATE_BOOK, commercial = DEFAULT_COMMERCIAL }: { projects: { id: string; title: string }[]; rateBook?: RateBook; commercial?: CommercialConfig }) {
   const [familyId, setFamilyId] = useState(FAMILIES[0].id);
   const family = FAMILIES.find((f) => f.id === familyId)!;
   const ratingOpts = family.groups[0].attributes[0].options!;
@@ -24,9 +25,9 @@ export function EstimationClient({ projects }: { projects: { id: string; title: 
   const [secondary, setSecondary] = useState(secOpts[Math.floor(secOpts.length / 2)].value);
   const [winding, setWinding] = useState("copper");
   const [qty, setQty] = useState(2);
-  const [margin, setMargin] = useState(18);
-  const [dealerPct, setDealerPct] = useState(2);
-  const [riskPct, setRiskPct] = useState(3);
+  const [margin, setMargin] = useState(commercial.marginPct);
+  const [dealerPct, setDealerPct] = useState(commercial.dealerPct);
+  const [riskPct, setRiskPct] = useState(commercial.riskPct);
 
   const values: Values = useMemo(() => ({
     ...initValues(family),
@@ -39,7 +40,7 @@ export function EstimationClient({ projects }: { projects: { id: string; title: 
 
   const derived = useMemo(() => family.derive(values), [family, values]);
   const bom = useMemo(() => family.emitBom(values, derived), [family, values, derived]);
-  const cost = useMemo(() => computeCost(bom, values, margin), [bom, values, margin]);
+  const cost = useMemo(() => computeCost(bom, values, margin, rateBook), [bom, values, margin, rateBook]);
 
   // commercial build-up
   const landed = cost.estimatedCost * (1 + riskPct / 100);
@@ -52,9 +53,9 @@ export function EstimationClient({ projects }: { projects: { id: string; title: 
   // cost drivers by category
   const drivers = useMemo(() => {
     const map = new Map<string, number>();
-    for (const l of bom) map.set(l.category, (map.get(l.category) ?? 0) + l.qty * rateOf(l.rateKey));
+    for (const l of bom) map.set(l.category, (map.get(l.category) ?? 0) + l.qty * rateOf(l.rateKey, rateBook.rates));
     return [...map.entries()].map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount);
-  }, [bom]);
+  }, [bom, rateBook]);
   const driverMax = Math.max(...drivers.map((d) => d.amount), 1);
 
   // benchmark vs actuals — via historical OVERRUN (same scale as this estimate)

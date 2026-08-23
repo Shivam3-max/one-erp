@@ -107,9 +107,40 @@ export const RATES: Record<string, Rate> = {
   hardware: { label: "Hardware & accessories", rate: 16000, unit: "MVA-set" },
 };
 
-export function rateOf(key: string): number {
-  return RATES[key]?.rate ?? 0;
+/** Look up a rate from a (possibly tenant-edited) rate map, falling back to the built-in default. */
+export function rateOf(key: string, rates: Record<string, Rate> = RATES): number {
+  return rates[key]?.rate ?? RATES[key]?.rate ?? 0;
 }
+
+/* ---------------- Cost factors (tenant-editable, per rate card) ---------------- */
+
+/** The commercial roll-up assumptions — everything here fluctuates by tenant + over time. */
+export interface CostFactors {
+  labourPct: number;      // % of material cost
+  overheadPct: number;    // % of (material + labour)
+  logisticsPct: number;   // % of material (packing + freight + insurance)
+  routineTesting: number; // ₹ per unit
+  typeTest: number;       // ₹ one-time (type test)
+  impulseTest: number;    // ₹ one-time (lightning impulse)
+  scTest: number;         // ₹ one-time (short-circuit)
+}
+
+export const DEFAULT_FACTORS: CostFactors = {
+  labourPct: 14, overheadPct: 9, logisticsPct: 6, routineTesting: 45000,
+  typeTest: 180000, impulseTest: 120000, scTest: 260000,
+};
+
+/** A full rate card: material rates + cost factors + which effective period it is. */
+export interface RateBook {
+  rates: Record<string, Rate>;
+  factors: CostFactors;
+  label: string;
+  effectiveFrom: string;
+}
+
+export const DEFAULT_RATE_BOOK: RateBook = {
+  rates: RATES, factors: DEFAULT_FACTORS, label: "Standard", effectiveFrom: RATE_CARD_DATE,
+};
 
 /* ---------------- Cost engine (generic, from BOM) ---------------- */
 
@@ -135,22 +166,23 @@ export interface CostSheet {
   contribution: number;
 }
 
-export function computeCost(bom: BomLine[], v: Values, marginPct: number): CostSheet {
+export function computeCost(bom: BomLine[], v: Values, marginPct: number, book: RateBook = DEFAULT_RATE_BOOK): CostSheet {
+  const f = book.factors;
   const materialLines = bom.map((l) => ({
     label: l.description,
-    amount: l.qty * rateOf(l.rateKey),
+    amount: l.qty * rateOf(l.rateKey, book.rates),
   }));
   const material = materialLines.reduce((s, l) => s + l.amount, 0);
-  const labour = material * 0.14;
-  const overhead = (material + labour) * 0.09;
-  const routineTesting = 45000;
-  const logistics = material * 0.06; // packing + freight + insurance
+  const labour = material * (f.labourPct / 100);
+  const overhead = (material + labour) * (f.overheadPct / 100);
+  const routineTesting = f.routineTesting;
+  const logistics = material * (f.logisticsPct / 100); // packing + freight + insurance
   const perUnit = material + labour + overhead + routineTesting + logistics;
 
   const oneTime =
-    (v.typeTest ? 180000 : 0) +
-    (v.impulseTest ? 120000 : 0) +
-    (v.scTest ? 260000 : 0);
+    (v.typeTest ? f.typeTest : 0) +
+    (v.impulseTest ? f.impulseTest : 0) +
+    (v.scTest ? f.scTest : 0);
 
   const quantity = Math.max(1, Number(v.quantity) || 1);
   const estimatedCost = perUnit * quantity + oneTime;
