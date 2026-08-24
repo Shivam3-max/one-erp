@@ -7,6 +7,7 @@ import { DEFAULT_COMMERCIAL, type CommercialConfig } from "./commercial";
 import { DEFAULT_QUOTE_TEMPLATE, type QuoteTemplate } from "./quote-template";
 import { type DbFamily, type CustomSchema } from "./configurator/custom";
 import { FAMILIES as BUILTIN_FAMILIES } from "./configurator/families";
+import type { OppStage } from "./mock/pipeline";
 
 const BUILTIN_FAMILY_IDS = new Set(BUILTIN_FAMILIES.map((f) => f.id));
 import type {
@@ -152,7 +153,7 @@ export async function getActivityFeed(limit = 12) {
 export async function getOpportunities() {
   const rows = await prisma.opportunity.findMany({ where: { tenantId: await currentTenantId() } });
   return rows.map((o) => ({
-    id: o.id, tenantId: o.tenantId, title: o.title, customerId: o.customerId, stage: o.stage,
+    id: o.id, tenantId: o.tenantId, title: o.title, customerId: o.customerId, stage: o.stage as OppStage,
     value: o.value, ownerId: o.ownerId, expectedClose: o.expectedClose, source: o.source,
     projectId: o.projectId ?? undefined, lastActivity: o.lastActivity,
   }));

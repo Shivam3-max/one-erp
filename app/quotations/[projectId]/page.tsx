@@ -36,14 +36,14 @@ export default async function QuotationDetail({ params }: { params: Promise<{ pr
     ownerInitials: owner.initials,
     product: q.product,
     standards: "IS 2026 / IEC 60076",
-    lineItems: q.lineItems.map((l) => ({ ...l, amount: l.qty * l.unitPrice })),
+    lineItems: q.lineItems.map((l: { desc: string; qty: number; unit: string; unitPrice: number }) => ({ ...l, amount: l.qty * l.unitPrice })),
     packing: q.packing, freight: q.freight, insurance: q.insurance, gstPct: q.gstPct,
     subtotal: totals.subtotal, taxable: totals.taxable, gst: totals.gst, grandTotal: totals.grandTotal,
     paymentTerms: q.paymentTerms, deliveryWeeks: q.deliveryWeeks,
     scope: q.scope, exclusions: q.exclusions, terms: q.terms,
     blocks: q.blocks,
-    revisions: q.revisions.map((r) => ({ rev: r.rev, date: r.date, authorName: userMap[r.authorId]?.name ?? "—", change: r.change })),
-    approvals: q.approvals.map((a) => {
+    revisions: q.revisions.map((r: { rev: number; date: string; authorId: string; change: string }) => ({ rev: r.rev, date: r.date, authorName: userMap[r.authorId]?.name ?? "—", change: r.change })),
+    approvals: q.approvals.map((a: { role: string; userId: string; status: string; date: string | null }) => {
       const u = userMap[a.userId];
       return { role: a.role, userName: u?.name ?? "—", userInitials: u?.initials ?? "?", status: a.status, date: a.date };
     }),
