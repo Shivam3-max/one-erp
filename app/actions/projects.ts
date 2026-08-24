@@ -27,7 +27,7 @@ export async function createProject(input: {
   const user = await authorize("project.create");
   const tId = user.tenantId;
   const existing = await prisma.project.findMany({ where: { id: { startsWith: "PRJ-2026-" } }, select: { id: true } });
-  const maxN = existing.reduce((m, p) => {
+  const maxN = existing.reduce((m: number, p: { id: string }) => {
     const n = parseInt(p.id.split("-").pop() || "0", 10);
     return Math.max(m, Number.isNaN(n) ? 0 : n);
   }, 0);

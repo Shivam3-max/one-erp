@@ -43,9 +43,9 @@ export default async function QuotationDetail({ params }: { params: Promise<{ pr
     scope: q.scope, exclusions: q.exclusions, terms: q.terms,
     blocks: q.blocks,
     revisions: q.revisions.map((r: { rev: number; date: string; authorId: string; change: string }) => ({ rev: r.rev, date: r.date, authorName: userMap[r.authorId]?.name ?? "—", change: r.change })),
-    approvals: q.approvals.map((a: { role: string; userId: string; status: string; date: string | null }) => {
+    approvals: q.approvals.map((a) => {
       const u = userMap[a.userId];
-      return { role: a.role, userName: u?.name ?? "—", userInitials: u?.initials ?? "?", status: a.status, date: a.date };
+      return { role: a.role, userName: u?.name ?? "—", userInitials: u?.initials ?? "?", status: a.status, date: a.date ?? undefined };
     }),
     compliance: {
       total: compItems.length,

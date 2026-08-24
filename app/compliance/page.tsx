@@ -5,7 +5,7 @@ import { getProjectsWithCompliance, getComplianceItems, getUserMap } from "@/lib
 export default async function CompliancePage() {
   const [projects, userMap] = await Promise.all([getProjectsWithCompliance(), getUserMap()]);
   const data: Record<string, Awaited<ReturnType<typeof getComplianceItems>>> = {};
-  await Promise.all(projects.map(async (p) => { data[p.id] = await getComplianceItems(p.id); }));
+  await Promise.all(projects.map(async (p: { id: string }) => { data[p.id] = await getComplianceItems(p.id); }));
 
   return (
     <>

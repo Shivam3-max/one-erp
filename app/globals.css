@@ -8,8 +8,8 @@
 
 @theme {
   /* Typography — Hanken Grotesk (UI) + IBM Plex Mono (technical data) */
-  --font-sans: var(--font-hanken), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-plex), ui-monospace, "SFMono-Regular", monospace;
+  --font-sans: "Segoe UI", "Aptos", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "Cascadia Code", "Consolas", ui-monospace, "SFMono-Regular", monospace;
 
   /* Surfaces */
   --color-canvas: #f4f6f9;
