@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import type { CommercialConfig } from "@/lib/commercial";
+import type { QuoteTemplate } from "@/lib/quote-template";
 
 async function guard() {
   const user = await requireUser();
@@ -29,6 +30,14 @@ export async function saveCommercialConfig(input: CommercialConfig) {
   await mergeTenantConfig(user.tenantId, { commercial: input });
   revalidatePath("/settings");
   revalidatePath("/estimation");
+  revalidatePath("/quotations");
+  return { ok: true };
+}
+
+export async function saveQuoteTemplate(input: QuoteTemplate) {
+  const user = await guard();
+  await mergeTenantConfig(user.tenantId, { quoteTemplate: input });
+  revalidatePath("/settings");
   revalidatePath("/quotations");
   return { ok: true };
 }

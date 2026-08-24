@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can, type Perm } from "@/lib/permissions";
-import { getCommercialConfig } from "@/lib/data";
+import { getCommercialConfig, getQuoteTemplate } from "@/lib/data";
 import { effectiveCommercial, type CustomerCommercial } from "@/lib/commercial";
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -94,6 +94,7 @@ export async function createQuotationForProject(projectId: string) {
 
   // effective commercial terms = tenant defaults + this customer's overrides
   const base = await getCommercialConfig();
+  const tpl = await getQuoteTemplate();
   const customer = await prisma.customer.findUnique({ where: { id: p.customerId }, select: { commercial: true } });
   const cust = (customer?.commercial as CustomerCommercial | null) ?? null;
   const cc = effectiveCommercial(base, cust);
@@ -109,14 +110,13 @@ export async function createQuotationForProject(projectId: string) {
       lineItems: [{ desc: p.productSummary, qty, unit: "no.", unitPrice: exWorksUnit }],
       packing: Math.round(subtotal * cc.packingPct / 100), freight: Math.round(subtotal * cc.freightPct / 100), insurance: Math.round(subtotal * cc.insurancePct / 100), gstPct: cc.gstPct,
       paymentTerms: cc.paymentTerms, deliveryWeeks: 20,
-      scope: ["Design, manufacture & routine testing", "Supply ex-works / FOR site", "Installation supervision", "Commissioning assistance", "Test certificates & O&M documentation", "Warranty support"],
-      exclusions: ["Civil foundations & grouting", "HV/LV cabling & terminations", "Unloading & storage at site", "Statutory & utility approvals", "Any taxes/duties beyond those stated"],
+      scope: tpl.scope,
+      exclusions: tpl.exclusions,
       terms: [
-        { label: "Delivery", value: "20 weeks from approved drawings & advance" },
         { label: "Payment", value: cc.paymentTerms },
         { label: "Validity", value: `${cc.validityDays} days from date of offer` },
         { label: "Warranty", value: `${cc.warrantyMonths} months from commissioning` },
-        { label: "Price basis", value: "Firm, ex-works; taxes extra at actuals" },
+        ...tpl.terms.map((x) => ({ label: x.label, value: x.value })),
       ],
       blocks: ALL_BLOCKS.map((b) => ({ ...b, included: true })),
       createdAt: now, updatedAt: now,

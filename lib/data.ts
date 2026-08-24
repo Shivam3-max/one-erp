@@ -4,6 +4,7 @@ import { stageIndex } from "./lifecycle";
 import { currentTenantId } from "./auth";
 import { DEFAULT_RATE_BOOK, DEFAULT_FACTORS, RATES, type RateBook, type Rate, type CostFactors } from "./configurator/model";
 import { DEFAULT_COMMERCIAL, type CommercialConfig } from "./commercial";
+import { DEFAULT_QUOTE_TEMPLATE, type QuoteTemplate } from "./quote-template";
 import type {
   Tenant, User, Customer, Project, Artifact, ProjectStage, StageKey, StageState,
   ArtifactType, ArtifactStatus, ProjectHealth, ProjectPriority, CustomerType,
@@ -291,6 +292,11 @@ export const getTenantConfig = cache(async (): Promise<Record<string, unknown>> 
 export const getCommercialConfig = cache(async (): Promise<CommercialConfig> => {
   const cfg = await getTenantConfig();
   return { ...DEFAULT_COMMERCIAL, ...((cfg.commercial as Partial<CommercialConfig>) ?? {}) };
+});
+
+export const getQuoteTemplate = cache(async (): Promise<QuoteTemplate> => {
+  const cfg = await getTenantConfig();
+  return { ...DEFAULT_QUOTE_TEMPLATE, ...((cfg.quoteTemplate as Partial<QuoteTemplate>) ?? {}) };
 });
 
 export { stageIndex };

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Building2, Boxes, GitBranch, Coins, ShieldCheck, Users,
-  ArrowRight, Check, Plus, Globe, Lock, Trash2, Power, Save, Receipt,
+  ArrowRight, Check, Plus, Globe, Lock, Trash2, Power, Save, Receipt, FileText, X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -17,9 +17,10 @@ import { DEPARTMENT_LABEL } from "@/lib/lifecycle";
 import { healthTone } from "@/lib/status";
 import { toggleFamilyActive, saveTenant, addFamily, addStandard, inviteUser } from "@/app/actions/settings";
 import { createRateCard, saveRateCard, activateRateCard, deleteRateCard } from "@/app/actions/rates";
-import { saveCommercialConfig } from "@/app/actions/commercial";
+import { saveCommercialConfig, saveQuoteTemplate } from "@/app/actions/commercial";
 import { DEFAULT_FACTORS, type CostFactors } from "@/lib/configurator/model";
 import { DEFAULT_COMMERCIAL, type CommercialConfig } from "@/lib/commercial";
+import { DEFAULT_QUOTE_TEMPLATE, type QuoteTemplate, type QuoteTerm } from "@/lib/quote-template";
 
 type TenantVM = { id: string; name: string; code: string; logoText: string; primaryCurrency: string; country: string; brandColor: string };
 type UserVM = { id: string; name: string; initials: string; role: string; department: string; email: string };
@@ -36,15 +37,17 @@ export interface SettingsData {
   standards: StandardVM[];
   rateCards: RateCardVM[];
   commercial: CommercialConfig;
+  quoteTemplate: QuoteTemplate;
 }
 
-type TabKey = "org" | "families" | "workflows" | "rates" | "commercial" | "standards" | "team";
+type TabKey = "org" | "families" | "workflows" | "rates" | "commercial" | "quotation" | "standards" | "team";
 const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: "org", label: "Organization", icon: Building2 },
   { key: "families", label: "Product Families", icon: Boxes },
   { key: "workflows", label: "Workflows", icon: GitBranch },
   { key: "rates", label: "Rate Cards", icon: Coins },
   { key: "commercial", label: "Commercial", icon: Receipt },
+  { key: "quotation", label: "Quotation", icon: FileText },
   { key: "standards", label: "Standards", icon: ShieldCheck },
   { key: "team", label: "Team & Roles", icon: Users },
 ];
@@ -75,6 +78,7 @@ export function SettingsClient({ data }: { data: SettingsData }) {
         {tab === "workflows" && <Workflows workflows={data.workflows} />}
         {tab === "rates" && <RateCards rateCards={data.rateCards} />}
         {tab === "commercial" && <Commercial config={data.commercial} />}
+        {tab === "quotation" && <QuotationTemplate template={data.quoteTemplate} />}
         {tab === "standards" && <Standards standards={data.standards} />}
         {tab === "team" && <Team users={data.users} />}
       </div>
@@ -415,6 +419,87 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="mb-4">
       <div className="mb-2 text-[11px] font-bold uppercase tracking-wide text-ink-4">{title}</div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{children}</div>
+    </div>
+  );
+}
+
+/* ---------- Quotation template ---------- */
+function QuotationTemplate({ template }: { template: QuoteTemplate }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const base = { ...DEFAULT_QUOTE_TEMPLATE, ...template };
+  const [t, setT] = useState<QuoteTemplate>(base);
+  const selKey = JSON.stringify(base);
+  useEffect(() => { setT({ ...DEFAULT_QUOTE_TEMPLATE, ...template }); }, [selKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const dirty = JSON.stringify(t) !== selKey;
+  const save = () => start(async () => { await saveQuoteTemplate(t); router.refresh(); });
+  return (
+    <Panel title="Quotation template" desc="The boilerplate that makes every offer look like yours — scope, exclusions, standard terms and notes. (Payment / validity / warranty come from Commercial.)"
+      action={<button onClick={save} disabled={!dirty || pending} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white hover:bg-brand-ink disabled:opacity-50"><Save className="h-4 w-4" /> {pending ? "Saving…" : dirty ? "Save changes" : "Saved"}</button>}>
+      <div className="space-y-5">
+        <ListEditor title="Scope of supply" placeholder="Add a scope line…" items={t.scope} onChange={(scope) => setT((s) => ({ ...s, scope }))} />
+        <ListEditor title="Exclusions" placeholder="Add an exclusion…" items={t.exclusions} onChange={(exclusions) => setT((s) => ({ ...s, exclusions }))} />
+        <TermsEditor terms={t.terms} onChange={(terms) => setT((s) => ({ ...s, terms }))} />
+        <div>
+          <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-4">Cover note</div>
+          <textarea value={t.coverNote} onChange={(e) => setT((s) => ({ ...s, coverNote: e.target.value }))} rows={3}
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink-2 outline-none focus:border-brand-line focus:ring-2 focus:ring-brand-soft" />
+          <div className="mt-1 text-[11px] text-ink-4">Tokens <Mono>{"{{product}}"}</Mono> and <Mono>{"{{customer}}"}</Mono> are filled in per quote.</div>
+        </div>
+        <div>
+          <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-4">Footer note</div>
+          <textarea value={t.footerNote} onChange={(e) => setT((s) => ({ ...s, footerNote: e.target.value }))} rows={2}
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] leading-relaxed text-ink-2 outline-none focus:border-brand-line focus:ring-2 focus:ring-brand-soft" />
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+function ListEditor({ title, placeholder, items, onChange }: { title: string; placeholder: string; items: string[]; onChange: (items: string[]) => void }) {
+  const [val, setVal] = useState("");
+  const add = () => { if (val.trim()) { onChange([...items, val.trim()]); setVal(""); } };
+  return (
+    <div>
+      <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-4">{title}</div>
+      <div className="space-y-1.5">
+        {items.map((it, i) => (
+          <div key={i} className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5">
+            <input value={it} onChange={(e) => onChange(items.map((x, j) => (j === i ? e.target.value : x)))} className="flex-1 bg-transparent text-[12.5px] text-ink-2 outline-none" />
+            <button onClick={() => onChange(items.filter((_, j) => j !== i))} className="text-ink-4 hover:text-danger" title="Remove"><X className="h-3.5 w-3.5" /></button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-2">
+        <input value={val} placeholder={placeholder} onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
+          className="flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-[12.5px] outline-none placeholder:text-ink-4 focus:border-brand-line" />
+        <button onClick={add} disabled={!val.trim()} className="flex items-center gap-1 rounded-lg border border-brand-line bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand-ink hover:bg-brand-soft/70 disabled:opacity-40"><Plus className="h-3.5 w-3.5" /> Add</button>
+      </div>
+    </div>
+  );
+}
+
+function TermsEditor({ terms, onChange }: { terms: QuoteTerm[]; onChange: (t: QuoteTerm[]) => void }) {
+  const [label, setLabel] = useState("");
+  const [value, setValue] = useState("");
+  const add = () => { if (label.trim()) { onChange([...terms, { label: label.trim(), value: value.trim() }]); setLabel(""); setValue(""); } };
+  return (
+    <div>
+      <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-ink-4">Standard terms (extra)</div>
+      <div className="space-y-1.5">
+        {terms.map((tm, i) => (
+          <div key={i} className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5">
+            <input value={tm.label} onChange={(e) => onChange(terms.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)))} className="w-32 shrink-0 bg-transparent text-[12.5px] font-semibold text-ink outline-none" />
+            <input value={tm.value} onChange={(e) => onChange(terms.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)))} className="flex-1 bg-transparent text-[12.5px] text-ink-2 outline-none" />
+            <button onClick={() => onChange(terms.filter((_, j) => j !== i))} className="text-ink-4 hover:text-danger" title="Remove"><X className="h-3.5 w-3.5" /></button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-1.5 flex gap-2">
+        <input value={label} placeholder="Label" onChange={(e) => setLabel(e.target.value)} className="w-32 rounded-lg border border-line bg-surface px-3 py-1.5 text-[12.5px] outline-none placeholder:text-ink-4 focus:border-brand-line" />
+        <input value={value} placeholder="Value" onChange={(e) => setValue(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} className="flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-[12.5px] outline-none placeholder:text-ink-4 focus:border-brand-line" />
+        <button onClick={add} disabled={!label.trim()} className="flex items-center gap-1 rounded-lg border border-brand-line bg-brand-soft px-3 py-1.5 text-[12px] font-semibold text-brand-ink hover:bg-brand-soft/70 disabled:opacity-40"><Plus className="h-3.5 w-3.5" /> Add</button>
+      </div>
     </div>
   );
 }
