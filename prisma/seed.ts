@@ -59,7 +59,7 @@ async function main() {
   await prisma.rateCard.createMany({ data: RATE_CARD_HISTORY.map((v, i) => {
     const scale = 1 - i * 0.05; // older cards ran cheaper — copper/CRGO have risen since
     const rates = Object.fromEntries(Object.entries(RATES).map(([k, r]) => [k, { ...r, rate: Math.round(r.rate * scale) }]));
-    return { tenantId: T, effectiveFrom: v.effectiveFrom, label: v.label, active: v.active ?? false, rates, factors: DEFAULT_FACTORS as Record<string, number> };
+    return { tenantId: T, effectiveFrom: v.effectiveFrom, label: v.label, active: v.active ?? false, rates, factors: DEFAULT_FACTORS as unknown as Record<string, number> };
   }) });
 
   // pipeline

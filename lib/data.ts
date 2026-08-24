@@ -5,6 +5,10 @@ import { currentTenantId } from "./auth";
 import { DEFAULT_RATE_BOOK, DEFAULT_FACTORS, RATES, type RateBook, type Rate, type CostFactors } from "./configurator/model";
 import { DEFAULT_COMMERCIAL, type CommercialConfig } from "./commercial";
 import { DEFAULT_QUOTE_TEMPLATE, type QuoteTemplate } from "./quote-template";
+import { type DbFamily, type CustomSchema } from "./configurator/custom";
+import { FAMILIES as BUILTIN_FAMILIES } from "./configurator/families";
+
+const BUILTIN_FAMILY_IDS = new Set(BUILTIN_FAMILIES.map((f) => f.id));
 import type {
   Tenant, User, Customer, Project, Artifact, ProjectStage, StageKey, StageState,
   ArtifactType, ArtifactStatus, ProjectHealth, ProjectPriority, CustomerType,
@@ -242,7 +246,7 @@ export async function getTestUnits() {
 
 export async function getFamilies() {
   const rows = await prisma.productFamily.findMany({ where: { tenantId: await currentTenantId() } });
-  return rows.map((f) => ({ id: f.id, name: f.name, category: f.category, blurb: f.blurb, attributeCount: f.attributeCount, active: f.active }));
+  return rows.map((f) => ({ id: f.id, name: f.name, category: f.category, blurb: f.blurb, attributeCount: f.attributeCount, active: f.active, custom: !BUILTIN_FAMILY_IDS.has(f.id) }));
 }
 
 export async function getWorkflows() {
@@ -298,5 +302,23 @@ export const getQuoteTemplate = cache(async (): Promise<QuoteTemplate> => {
   const cfg = await getTenantConfig();
   return { ...DEFAULT_QUOTE_TEMPLATE, ...((cfg.quoteTemplate as Partial<QuoteTemplate>) ?? {}) };
 });
+
+/* ---------------- custom product families (Family Studio) ---------------- */
+
+/** Active tenant families that carry a usable schema — rendered in the configurator alongside the built-ins. */
+export const getCustomFamilies = cache(async (): Promise<DbFamily[]> => {
+  const rows = await prisma.productFamily.findMany({ where: { tenantId: await currentTenantId(), active: true } });
+  return rows
+    .filter((r) => !BUILTIN_FAMILY_IDS.has(r.id))
+    .map((r) => ({ id: r.id, name: r.name, category: r.category, blurb: r.blurb, schema: (r.schema as CustomSchema | null) ?? null }))
+    .filter((f): f is DbFamily => !!f.schema && Array.isArray(f.schema.groups) && f.schema.groups.some((g) => g.attributes.length > 0));
+});
+
+/** One family with its full schema, for the studio editor. */
+export async function getFamily(id: string): Promise<DbFamily | null> {
+  const r = await prisma.productFamily.findFirst({ where: { id, tenantId: await currentTenantId() } });
+  if (!r) return null;
+  return { id: r.id, name: r.name, category: r.category, blurb: r.blurb, schema: (r.schema as CustomSchema | null) ?? null };
+}
 
 export { stageIndex };

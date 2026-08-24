@@ -1,9 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import type { CustomSchema } from "@/lib/configurator/custom";
 
 async function guard() {
   const user = await requireUser();
@@ -31,6 +33,28 @@ export async function addFamily(input: { name: string; category: string; blurb: 
     data: { id, tenantId: user.tenantId, name: input.name, category: input.category || "General", blurb: input.blurb || "Custom product family", attributeCount: 0, active: true },
   });
   revalidatePath("/settings");
+  return { ok: true };
+}
+
+/** Author / update a custom family's attribute schema + BOM rules (Family Studio). */
+export async function saveFamilySchema(id: string, meta: { name: string; category: string; blurb: string }, schema: CustomSchema) {
+  const user = await guard();
+  const fam = await prisma.productFamily.findFirst({ where: { id, tenantId: user.tenantId } });
+  if (!fam) return { ok: false, reason: "not-found" };
+  const attributeCount = schema.groups.reduce((s, g) => s + g.attributes.length, 0);
+  await prisma.productFamily.update({
+    where: { id },
+    data: {
+      name: meta.name.trim() || fam.name,
+      category: meta.category.trim() || fam.category,
+      blurb: meta.blurb.trim() || fam.blurb,
+      attributeCount,
+      schema: schema as unknown as Prisma.InputJsonValue,
+    },
+  });
+  revalidatePath("/settings");
+  revalidatePath("/configurator");
+  revalidatePath(`/settings/families/${id}`);
   return { ok: true };
 }
 

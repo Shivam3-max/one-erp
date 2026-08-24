@@ -24,7 +24,7 @@ import { DEFAULT_QUOTE_TEMPLATE, type QuoteTemplate, type QuoteTerm } from "@/li
 
 type TenantVM = { id: string; name: string; code: string; logoText: string; primaryCurrency: string; country: string; brandColor: string };
 type UserVM = { id: string; name: string; initials: string; role: string; department: string; email: string };
-type FamilyVM = { id: string; name: string; category: string; blurb: string; attributeCount: number; active: boolean };
+type FamilyVM = { id: string; name: string; category: string; blurb: string; attributeCount: number; active: boolean; custom: boolean };
 type WorkflowVM = { artifactType: string; label: string; states: string[]; approvalChain: string[] };
 type StandardVM = { code: string; title: string; scope: "global" | "tenant" };
 type RateCardVM = { id: string; effectiveFrom: string; label: string; active: boolean; rates: Record<string, { label: string; rate: number; unit: string }>; factors: CostFactors };
@@ -159,15 +159,19 @@ function Families({ families }: { families: FamilyVM[] }) {
           <div key={f.id} className="flex items-center gap-3 px-4 py-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft text-brand"><Boxes className="h-4 w-4" /></span>
             <div className="min-w-0 flex-1">
-              <div className="text-[13.5px] font-semibold text-ink">{f.name}</div>
+              <div className="flex items-center gap-1.5 text-[13.5px] font-semibold text-ink">{f.name}
+                {f.custom && <span className="rounded bg-copper-soft px-1.5 py-px text-[9px] font-bold uppercase text-copper">custom</span>}
+              </div>
               <div className="text-[11.5px] text-ink-3">{f.category} · {f.attributeCount} attributes · {f.blurb}</div>
             </div>
-            <Link href="/configurator" className="text-[12px] font-semibold text-brand hover:underline">Configure →</Link>
+            {f.custom
+              ? <Link href={`/settings/families/${f.id}`} className="text-[12px] font-semibold text-brand hover:underline">Studio →</Link>
+              : <Link href="/configurator" className="text-[12px] font-semibold text-brand hover:underline">Configure →</Link>}
             <Toggle on={local[f.id]} onClick={() => toggle(f.id)} disabled={pending} />
           </div>
         ))}
       </div>
-      <p className="mt-3 text-[12px] text-ink-3">Switchgear, RMU, cast-resin and other families are added the same way — no code change.</p>
+      <p className="mt-3 text-[12px] text-ink-3">Switchgear, RMU, cast-resin and other lines are added the same way — <b className="text-ink-2">New family</b>, then open the <b className="text-ink-2">Studio</b> to author its attributes &amp; BOM rules. No code change.</p>
     </Panel>
   );
 }

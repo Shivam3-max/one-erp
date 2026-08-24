@@ -12,14 +12,19 @@ import {
   initValues, computeCost, attrCount, rateOf, DEFAULT_RATE_BOOK,
   type Values, type AttrDef, type FamilyDef, type RateBook,
 } from "@/lib/configurator/model";
+import { customToFamilyDef, customSummary, type DbFamily } from "@/lib/configurator/custom";
 import { SaveToProjectButton } from "./SaveToProjectButton";
 
 const inr = (n: number) => money({ amount: Math.round(n), currency: "INR" });
 
-export function ConfiguratorClient({ projects, rateBook = DEFAULT_RATE_BOOK }: { projects: { id: string; title: string }[]; rateBook?: RateBook }) {
-  const [familyId, setFamilyId] = useState(FAMILIES[0].id);
-  const family = FAMILIES.find((f) => f.id === familyId)!;
-  const [values, setValues] = useState<Values>(() => initValues(FAMILIES[0]));
+export function ConfiguratorClient({ projects, rateBook = DEFAULT_RATE_BOOK, customFamilies = [] }: { projects: { id: string; title: string }[]; rateBook?: RateBook; customFamilies?: DbFamily[] }) {
+  // built-in families + tenant-authored ones (compiled from their JSON schema)
+  const FAMS = useMemo<FamilyDef[]>(() => [...FAMILIES, ...customFamilies.map(customToFamilyDef)], [customFamilies]);
+  const customIds = useMemo(() => new Set(customFamilies.map((f) => f.id)), [customFamilies]);
+
+  const [familyId, setFamilyId] = useState(FAMS[0].id);
+  const family = FAMS.find((f) => f.id === familyId) ?? FAMS[0];
+  const [values, setValues] = useState<Values>(() => initValues(FAMS[0]));
   const [margin, setMargin] = useState(18);
 
   const changeFamily = (f: FamilyDef) => {
@@ -48,13 +53,18 @@ export function ConfiguratorClient({ projects, rateBook = DEFAULT_RATE_BOOK }: {
   const errors = issues.filter((i) => i.level === "error");
   const specCount = sheet.reduce((s, g) => s + g.rows.length, 0);
 
+  const custom = customFamilies.find((c) => c.id === family.id);
+  const summary = custom
+    ? customSummary(custom, effective)
+    : `${derived.mva} MVA ${values.primaryVoltage}/${values.secondaryVoltage} kV ${values.cooling}`;
+
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_400px]">
       {/* ---------------- FORM ---------------- */}
       <div className="min-w-0 space-y-4">
         {/* Family switcher */}
         <div className="flex flex-wrap gap-2">
-          {FAMILIES.map((f) => {
+          {FAMS.map((f) => {
             const active = f.id === familyId;
             return (
               <button
@@ -213,7 +223,7 @@ export function ConfiguratorClient({ projects, rateBook = DEFAULT_RATE_BOOK }: {
                 familyName: family.name,
                 values: effective,
                 marginPct: margin,
-                summary: `${derived.mva} MVA ${values.primaryVoltage}/${values.secondaryVoltage} kV ${values.cooling}`,
+                summary,
               }}
             />
           </div>
