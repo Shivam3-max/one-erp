@@ -17,6 +17,23 @@ async function authorize(perm: Perm) {
 
 const REQ_ORDER = ["required", "rfq", "po", "received"];
 
+/** Add an approved vendor to the tenant's panel (used by RFQ pooling). */
+export async function addVendor(input: { name: string; category: string; rating: string; location: string; onTimePct: number | string }) {
+  const user = await authorize("procurement.manage");
+  if (!input.name?.trim()) return { ok: false, reason: "name" };
+  const id = `V-${Date.now().toString().slice(-6)}`;
+  const pct = Math.max(0, Math.min(100, Math.round(Number(input.onTimePct)) || 85));
+  await prisma.vendor.create({
+    data: {
+      id, tenantId: user.tenantId, name: input.name.trim(),
+      category: input.category?.trim() || "General", rating: input.rating === "A" ? "A" : "B",
+      location: input.location?.trim() || "—", onTimePct: pct,
+    },
+  });
+  revalidatePath("/procurement");
+  return { ok: true };
+}
+
 async function nextPoNo() {
   const withPo = await prisma.materialReq.findMany({ where: { poNo: { not: null } }, select: { poNo: true } });
   const maxN = withPo.reduce((m, x) => {

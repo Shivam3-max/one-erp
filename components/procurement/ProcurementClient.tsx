@@ -2,13 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, GitBranch, ShoppingCart, TruckIcon, TriangleAlert, CheckCircle2, ArrowRight } from "lucide-react";
+import { ChevronDown, GitBranch, ShoppingCart, TruckIcon, TriangleAlert, CheckCircle2, ArrowRight, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { money, shortDate } from "@/lib/format";
 import { Badge, Mono } from "@/components/ui/Badge";
 import { REQ_STATUS_ORDER, REQ_STATUS_LABEL, type ReqStatus, type MaterialReq, type Vendor } from "@/lib/mock/procurement";
 import { healthTone } from "@/lib/status";
-import { advanceRequirement, raiseRFQ, awardPO } from "@/app/actions/execution";
+import { advanceRequirement, raiseRFQ, awardPO, addVendor } from "@/app/actions/execution";
 
 const NEXT_LABEL: Record<ReqStatus, string> = { required: "Raise RFQ", rfq: "Place PO", po: "Mark received", received: "" };
 
@@ -135,7 +135,7 @@ export function ProcurementClient({ projects, reqsByProject, vendors }: { projec
 
       {/* Vendors */}
       <div className="rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-card)]">
-        <div className="border-b border-line-2 px-4 py-3 text-[13px] font-bold text-ink">Approved vendors</div>
+        <VendorsHeader />
         <div className="grid grid-cols-1 divide-y divide-line-2 sm:grid-cols-2 sm:divide-x lg:grid-cols-3">
           {vendors.map((v) => (
             <div key={v.id} className="flex items-center justify-between px-4 py-3">
@@ -151,6 +151,34 @@ export function ProcurementClient({ projects, reqsByProject, vendors }: { projec
           ))}
         </div>
       </div>
+    </div>
+  );
+}
+
+function VendorsHeader() {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [open, setOpen] = useState(false);
+  const blank = { name: "", category: "", location: "", rating: "A", onTimePct: "90" };
+  const [f, setF] = useState(blank);
+  const set = (k: keyof typeof blank, v: string) => setF((s) => ({ ...s, [k]: v }));
+  const add = () => { if (!f.name.trim()) return; start(async () => { await addVendor(f); setF(blank); setOpen(false); router.refresh(); }); };
+  return (
+    <div className="border-b border-line-2">
+      <div className="flex items-center justify-between px-4 py-3">
+        <span className="text-[13px] font-bold text-ink">Approved vendors</span>
+        <button onClick={() => setOpen((v) => !v)} className="flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[12px] font-semibold text-ink-2 hover:bg-surface-3"><Plus className="h-3.5 w-3.5" /> Add vendor</button>
+      </div>
+      {open && (
+        <div className="flex flex-wrap items-center gap-2 border-t border-line-2 bg-brand-soft/20 px-4 py-2.5">
+          <input value={f.name} onChange={(e) => set("name", e.target.value)} placeholder="Vendor name" className="min-w-[150px] flex-1 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] outline-none placeholder:text-ink-4 focus:border-brand-line" />
+          <input value={f.category} onChange={(e) => set("category", e.target.value)} placeholder="Category" className="w-32 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] outline-none placeholder:text-ink-4 focus:border-brand-line" />
+          <input value={f.location} onChange={(e) => set("location", e.target.value)} placeholder="Location" className="w-28 rounded-md border border-line bg-surface px-2.5 py-1.5 text-[12.5px] outline-none placeholder:text-ink-4 focus:border-brand-line" />
+          <select value={f.rating} onChange={(e) => set("rating", e.target.value)} className="rounded-md border border-line bg-surface px-2 py-1.5 text-[12.5px] outline-none focus:border-brand-line"><option value="A">A</option><option value="B">B</option></select>
+          <input type="number" value={f.onTimePct} onChange={(e) => set("onTimePct", e.target.value)} placeholder="% on-time" title="% on-time" className="tnum w-20 rounded-md border border-line bg-surface px-2 py-1.5 text-right font-mono text-[12.5px] outline-none placeholder:font-sans placeholder:text-ink-4 focus:border-brand-line" />
+          <button onClick={add} disabled={pending || !f.name.trim()} className="rounded-md bg-brand px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-brand-ink disabled:opacity-50">{pending ? "Adding…" : "Add"}</button>
+        </div>
+      )}
     </div>
   );
 }
