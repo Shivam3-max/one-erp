@@ -53,6 +53,27 @@ async function main() {
 
   // configuration masters
   await prisma.productFamily.createMany({ data: FAMILIES.map((f) => ({ id: f.id, tenantId: T, name: f.name, category: f.category, blurb: f.blurb, attributeCount: attrCount(f), active: true })) });
+  // a tenant-authored (data-only) family, to showcase the Family Studio out of the box
+  await prisma.productFamily.create({
+    data: {
+      id: "cast-resin-dry-type", tenantId: T, name: "Cast-Resin Dry-Type Transformer", category: "Dry-Type",
+      blurb: "Epoxy cast-resin dry-type transformer · IEC 60076-11", attributeCount: 3, active: true,
+      schema: {
+        groups: [{ id: "spec", label: "Specification", attributes: [
+          { id: "rating", label: "Rated power", type: "number", unit: "MVA", default: 2, min: 0.5, max: 12.5 },
+          { id: "primary", label: "Primary voltage", type: "enum", unit: "kV", default: "11", options: [{ value: "11", label: "11" }, { value: "22", label: "22" }, { value: "33", label: "33" }] },
+          { id: "iclass", label: "Insulation class", type: "enum", default: "f", options: [{ value: "f", label: "Class F" }, { value: "h", label: "Class H" }] },
+        ] }],
+        bom: [
+          { rateKey: "copper", label: "Copper winding (cast-resin)", category: "Windings", unit: "kg", qtyMode: "perMVA", qty: 380 },
+          { rateKey: "crgo", label: "CRGO core", category: "Core", unit: "kg", qtyMode: "perMVA", qty: 420 },
+          { rateKey: "steel", label: "Enclosure & frame", category: "Enclosure", unit: "kg", qtyMode: "perMVA", qty: 250 },
+          { rateKey: "paint", label: "Epoxy resin & finish", category: "Finish", unit: "kg", qtyMode: "fixed", qty: 60 },
+        ],
+        mvaAttrId: "rating",
+      },
+    },
+  });
   await prisma.vendor.createMany({ data: VENDORS.map((v) => ({ id: v.id, tenantId: T, name: v.name, category: v.category, rating: v.rating, location: v.location, onTimePct: v.onTimePct })) });
   await prisma.standardRef.createMany({ data: STANDARDS.map((s) => ({ tenantId: s.scope === "tenant" ? T : null, code: s.code, title: s.title, scope: s.scope })) });
   await prisma.workflowConfig.createMany({ data: WORKFLOWS.map((w) => ({ tenantId: T, artifactType: w.artifactType, label: w.label, states: w.states, approvalChain: w.approvalChain })) });
