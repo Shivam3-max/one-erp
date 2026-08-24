@@ -4,9 +4,11 @@ import { ArrowLeft, MapPin, Mail, Phone, Building2, Calendar, MessageSquare, Pho
 import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { getCustomer, getUserMap, getProjects, getOpportunities, getContactsFor, getCommsFor } from "@/lib/data";
+import { getCustomer, getUserMap, getProjects, getOpportunities, getContactsFor, getCommsFor, getCommercialConfig } from "@/lib/data";
 import { STAGE_LABEL } from "@/lib/mock/pipeline";
 import { LogCommButton } from "@/components/crm/LogCommButton";
+import { CustomerCommercialCard } from "@/components/crm/CustomerCommercialCard";
+import type { CustomerCommercial } from "@/lib/commercial";
 import { money, shortDate, relDate } from "@/lib/format";
 import { healthTone, healthLabel, titleCase } from "@/lib/status";
 
@@ -19,9 +21,10 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
   const customer = await getCustomer(id);
   if (!customer || customer.id !== id) notFound();
 
-  const [allProjects, allOpps, contacts, comms, userMap] = await Promise.all([
-    getProjects(), getOpportunities(), getContactsFor(id), getCommsFor(id), getUserMap(),
+  const [allProjects, allOpps, contacts, comms, userMap, commercialDefaults] = await Promise.all([
+    getProjects(), getOpportunities(), getContactsFor(id), getCommsFor(id), getUserMap(), getCommercialConfig(),
   ]);
+  const customerOverride = ((customer as { commercial?: CustomerCommercial }).commercial ?? {}) as CustomerCommercial;
   const projects = allProjects.filter((p) => p.customerId === id);
   const opps = allOpps.filter((o) => o.customerId === id);
   const openOpps = opps.filter((o) => o.stage !== "won" && o.stage !== "lost");
@@ -108,6 +111,8 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
 
         {/* Right: contacts + opps */}
         <div className="space-y-4">
+          <CustomerCommercialCard customerId={id} override={customerOverride} defaults={commercialDefaults} />
+
           <Card>
             <CardHeader title="Contacts" />
             <div className="divide-y divide-line-2">
@@ -137,7 +142,7 @@ export default async function CustomerDetail({ params }: { params: Promise<{ id:
                     <span className="tnum font-mono text-[12px] font-semibold text-ink">{inr(o.value)}</span>
                   </div>
                   <div className="mt-0.5 flex items-center gap-2 text-[11px] text-ink-3">
-                    <Badge tone={healthTone["on-track"]}>{STAGE_LABEL[o.stage]}</Badge>
+                    <Badge tone={healthTone["on-track"]}>{STAGE_LABEL[o.stage as keyof typeof STAGE_LABEL]}</Badge>
                     <span>close {shortDate(o.expectedClose)}</span>
                   </div>
                 </Link>
