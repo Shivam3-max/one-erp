@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { captureException } from "@/lib/log";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,8 @@ export async function GET() {
       { status: "ok", db: "up", ms: Date.now() - startedAt },
       { status: 200, headers: { "Cache-Control": "no-store" } },
     );
-  } catch {
+  } catch (err) {
+    captureException(err, { where: "health" });
     return NextResponse.json(
       { status: "degraded", db: "down" },
       { status: 503, headers: { "Cache-Control": "no-store" } },

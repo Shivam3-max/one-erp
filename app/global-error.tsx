@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import { captureException } from "@/lib/log";
 
 // Catches errors thrown in the root layout itself. Must render its own <html>/<body>.
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    console.error(error);
+    captureException(error, { digest: error.digest, boundary: "global" });
   }, [error]);
 
   return (

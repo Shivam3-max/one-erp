@@ -6,6 +6,7 @@ import { LIFECYCLE } from "@/lib/lifecycle";
 import { requireUser } from "@/lib/auth";
 import { can, type Perm } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
+import { parseInput, createProjectSchema } from "@/lib/validation";
 
 async function authorize(perm: Perm) {
   const user = await requireUser();
@@ -15,7 +16,7 @@ async function authorize(perm: Perm) {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export async function createProject(input: {
+export async function createProject(rawInput: {
   title: string;
   customerId: string;
   productSummary: string;
@@ -26,6 +27,9 @@ export async function createProject(input: {
   ownerId?: string;
 }) {
   const user = await authorize("project.create");
+  const parsed = parseInput(createProjectSchema, rawInput);
+  if (!parsed.ok) return { error: parsed.error };
+  const input = parsed.data;
   const tId = user.tenantId;
   const existing = await prisma.project.findMany({ where: { id: { startsWith: "PRJ-2026-" } }, select: { id: true } });
   const maxN = existing.reduce((m: number, p: { id: string }) => {

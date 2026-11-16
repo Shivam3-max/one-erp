@@ -18,10 +18,13 @@ export function NewProjectButton({ customers }: { customers: { id: string; name:
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
+  const [error, setError] = useState("");
+
   const submit = () => {
     if (!form.title.trim() || !form.customerId) return;
+    setError("");
     startTransition(async () => {
-      const { id } = await createProject({
+      const res = await createProject({
         title: form.title.trim(),
         customerId: form.customerId,
         productSummary: form.productSummary.trim() || "To be configured",
@@ -30,8 +33,10 @@ export function NewProjectButton({ customers }: { customers: { id: string; name:
         priority: form.priority,
         targetDelivery: form.targetDelivery || undefined,
       });
+      if ("error" in res && res.error) { setError(res.error); return; }
+      if (!("id" in res)) return;
       setOpen(false);
-      router.push(`/projects/${id}`);
+      router.push(`/projects/${res.id}`);
     });
   };
 
@@ -86,6 +91,9 @@ export function NewProjectButton({ customers }: { customers: { id: string; name:
                 </Field>
               </div>
             </div>
+            {error && (
+              <div className="mx-5 mb-1 rounded-lg border border-danger/25 bg-danger-soft px-3 py-2 text-[12.5px] font-medium text-danger">{error}</div>
+            )}
             <div className="flex justify-end gap-2 border-t border-line px-5 py-3.5">
               <button onClick={() => setOpen(false)} disabled={pending}
                 className="rounded-lg border border-line bg-surface px-4 py-2 text-[13px] font-semibold text-ink-2 hover:bg-surface-3">Cancel</button>

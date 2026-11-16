@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { captureException } from "./log";
 
 /**
  * Append an audit-log entry. Best-effort: logging must never break the action
@@ -23,6 +24,6 @@ export async function logActivity(input: {
       },
     });
   } catch (err) {
-    console.error("logActivity failed", err);
+    captureException(err, { where: "logActivity", verb: input.verb });
   }
 }

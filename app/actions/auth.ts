@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
+import { parseInput, signInSchema, registerSchema } from "@/lib/validation";
 import { USERS } from "@/lib/mock/org";
 
 async function clientIp(): Promise<string> {
@@ -14,9 +15,13 @@ async function clientIp(): Promise<string> {
 }
 
 export async function signIn(formData: FormData): Promise<{ error?: string }> {
-  const email = String(formData.get("email") || "").toLowerCase().trim();
-  const password = String(formData.get("password") || "");
-  if (!email || !password) return { error: "Email and password are required." };
+  const parsed = parseInput(signInSchema, {
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.ok) return { error: parsed.error };
+  const email = parsed.data.email.toLowerCase();
+  const password = parsed.data.password;
 
   // Throttle credential guessing: 5 attempts / minute per IP.
   const limit = rateLimit(`signin:${await clientIp()}`, 5, 60_000);
@@ -43,13 +48,15 @@ export async function signOut() {
 
 /** Onboard a brand-new tenant + its admin user (multi-tenant signup). */
 export async function registerTenant(formData: FormData): Promise<{ error?: string }> {
-  const company = String(formData.get("company") || "").trim();
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").toLowerCase().trim();
-  const password = String(formData.get("password") || "");
-  if (!company || !name || !email || password.length < 6) {
-    return { error: "All fields required; password must be at least 6 characters." };
-  }
+  const parsed = parseInput(registerSchema, {
+    company: formData.get("company"),
+    name: formData.get("name"),
+    email: formData.get("email"),
+    password: formData.get("password"),
+  });
+  if (!parsed.ok) return { error: parsed.error };
+  const { company, name, password } = parsed.data;
+  const email = parsed.data.email.toLowerCase();
 
   // Throttle signup abuse: 3 new workspaces / 10 minutes per IP.
   const limit = rateLimit(`register:${await clientIp()}`, 3, 10 * 60_000);

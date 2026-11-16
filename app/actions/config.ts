@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
+import { parseInput, saveConfigurationSchema, saveEstimateSchema } from "@/lib/validation";
 
 async function authz() {
   const user = await requireUser();
@@ -11,7 +12,7 @@ async function authz() {
   return user;
 }
 
-export async function saveConfiguration(input: {
+export async function saveConfiguration(rawInput: {
   projectId: string;
   familyId: string;
   familyName: string;
@@ -20,6 +21,9 @@ export async function saveConfiguration(input: {
   summary: string;
 }) {
   const user = await authz();
+  const parsed = parseInput(saveConfigurationSchema, rawInput);
+  if (!parsed.ok) return { ok: false, reason: parsed.error };
+  const input = parsed.data;
   const tenantId = user.tenantId;
   const now = new Date().toISOString().slice(0, 10);
 
@@ -50,7 +54,7 @@ export async function saveConfiguration(input: {
 }
 
 /** Save an estimate as a cost-sheet artifact on a project. */
-export async function saveEstimate(input: {
+export async function saveEstimate(rawInput: {
   projectId: string;
   summary: string;
   estimatedCost: number;
@@ -58,6 +62,9 @@ export async function saveEstimate(input: {
   marginPct: number;
 }) {
   const user = await authz();
+  const parsed = parseInput(saveEstimateSchema, rawInput);
+  if (!parsed.ok) return { ok: false, reason: parsed.error };
+  const input = parsed.data;
   const now = new Date().toISOString().slice(0, 10);
   const project = await prisma.project.findFirst({ where: { id: input.projectId, tenantId: user.tenantId }, select: { id: true } });
   if (!project) return { ok: false, reason: "not-found" };

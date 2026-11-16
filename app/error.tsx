@@ -2,11 +2,11 @@
 
 import { useEffect } from "react";
 import { AlertTriangle, RotateCw } from "lucide-react";
+import { captureException } from "@/lib/log";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    // Surface to the browser console; wire to an error tracker (e.g. Sentry) in production.
-    console.error(error);
+    captureException(error, { digest: error.digest, boundary: "route" });
   }, [error]);
 
   return (
