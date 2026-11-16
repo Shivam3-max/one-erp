@@ -8,7 +8,7 @@ if (!process.env.AUTH_SECRET) {
   );
 }
 const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET);
-const PUBLIC = ["/login", "/register"];
+const PUBLIC = ["/login", "/register", "/api/health"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

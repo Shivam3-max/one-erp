@@ -52,7 +52,7 @@ const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
   { key: "team", label: "Team & Roles", icon: Users },
 ];
 
-export function SettingsClient({ data }: { data: SettingsData }) {
+export function SettingsClient({ data, canManage = true }: { data: SettingsData; canManage?: boolean }) {
   const [tab, setTab] = useState<TabKey>("org");
 
   return (
@@ -72,7 +72,12 @@ export function SettingsClient({ data }: { data: SettingsData }) {
         })}
       </nav>
 
-      <div className="min-w-0">
+      <fieldset disabled={!canManage} className="m-0 min-w-0 border-0 p-0">
+        {!canManage && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2 text-[12px] text-ink-3">
+            <Lock className="h-4 w-4" /> You have read-only access. Editing settings requires a Manager or Administrator role.
+          </div>
+        )}
         {tab === "org" && <Org tenant={data.tenant} />}
         {tab === "families" && <Families families={data.families} />}
         {tab === "workflows" && <Workflows workflows={data.workflows} />}
@@ -81,7 +86,7 @@ export function SettingsClient({ data }: { data: SettingsData }) {
         {tab === "quotation" && <QuotationTemplate template={data.quoteTemplate} />}
         {tab === "standards" && <Standards standards={data.standards} />}
         {tab === "team" && <Team users={data.users} />}
-      </div>
+      </fieldset>
     </div>
   );
 }

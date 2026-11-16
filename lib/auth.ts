@@ -110,6 +110,8 @@ export async function requireUser(): Promise<SessionUser> {
 export const currentTenantId = cache(async (): Promise<string> => {
   const u = await getCurrentUser();
   if (u) return u.tenantId;
+  // No authenticated user: only the local demo may fall back to a default tenant.
+  if (process.env.NODE_ENV === "production") throw new Error("Not authenticated");
   try {
     const t = await prisma.tenant.findFirst({ select: { id: true } });
     return t?.id ?? TENANT.id;

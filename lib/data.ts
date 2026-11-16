@@ -127,10 +127,16 @@ export interface RateCardRecord {
   factors: CostFactors;
 }
 
+// Demo/mock fallback is for local development only. In production a DB failure
+// must surface (error boundary) rather than silently serving fake seed data —
+// which could otherwise show one tenant another tenant's demo records.
+const ALLOW_MOCK_FALLBACK = process.env.NODE_ENV !== "production";
+
 async function withFallback<T>(dbFn: () => Promise<T>, mockFn: () => T | Promise<T>): Promise<T> {
   try {
     return await dbFn();
-  } catch {
+  } catch (err) {
+    if (!ALLOW_MOCK_FALLBACK) throw err;
     return await mockFn();
   }
 }

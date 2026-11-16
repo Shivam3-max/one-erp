@@ -17,7 +17,7 @@ const QTY_MODES: { value: BomQtyMode; label: string }[] = [
   { value: "perAttr", label: "× attribute" },
 ];
 
-export function FamilyStudio({ family, rateBook }: { family: DbFamily; rateBook: RateBook }) {
+export function FamilyStudio({ family, rateBook, canManage = true }: { family: DbFamily; rateBook: RateBook; canManage?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [saved, setSaved] = useState(false);
@@ -81,13 +81,15 @@ export function FamilyStudio({ family, rateBook }: { family: DbFamily; rateBook:
         <Link href="/settings" className="inline-flex items-center gap-1 text-[12px] font-semibold text-ink-3 hover:text-brand"><ArrowLeft className="h-3.5 w-3.5" /> Settings</Link>
         <div className="flex items-center gap-2">
           {usable && <Link href="/configurator" className="rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px] font-semibold text-ink-2 hover:bg-surface-3">Open in configurator →</Link>}
-          <button onClick={save} disabled={pending} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white shadow-[var(--shadow-rail)] hover:bg-brand-ink disabled:opacity-50">
-            <Save className="h-4 w-4" /> {pending ? "Saving…" : saved ? "Saved" : "Save family"}
-          </button>
+          {canManage && (
+            <button onClick={save} disabled={pending} className="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-[13px] font-semibold text-white shadow-[var(--shadow-rail)] hover:bg-brand-ink disabled:opacity-50">
+              <Save className="h-4 w-4" /> {pending ? "Saving…" : saved ? "Saved" : "Save family"}
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
+      <fieldset disabled={!canManage} className="m-0 grid grid-cols-1 gap-4 border-0 p-0 lg:grid-cols-[1fr_360px]">
         {/* left: authoring */}
         <div className="min-w-0 space-y-4">
           {/* meta */}
@@ -203,7 +205,7 @@ export function FamilyStudio({ family, rateBook }: { family: DbFamily; rateBook:
             </div>
           </div>
         </div>
-      </div>
+      </fieldset>
     </div>
   );
 }
