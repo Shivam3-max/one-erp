@@ -38,3 +38,15 @@ export function relDate(d?: ISODate): string {
 export function initialsOf(name: string): string {
   return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 }
+
+/**
+ * Indian fiscal quarter label, e.g. "Q3 FY27". The fiscal year starts in April;
+ * FY<NN> is the calendar year in which it ends (Apr 2026–Mar 2027 → FY27).
+ */
+export function fiscalQuarter(d: Date = new Date()): string {
+  const m = d.getMonth(); // 0 = Jan
+  const fyStartMonth = 3; // April
+  const quarter = Math.floor(((m - fyStartMonth + 12) % 12) / 3) + 1;
+  const fyEndYear = m >= fyStartMonth ? d.getFullYear() + 1 : d.getFullYear();
+  return `Q${quarter} FY${String(fyEndYear).slice(-2)}`;
+}

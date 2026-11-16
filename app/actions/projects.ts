@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { LIFECYCLE } from "@/lib/lifecycle";
 import { requireUser } from "@/lib/auth";
 import { can, type Perm } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 async function authorize(perm: Perm) {
   const user = await requireUser();
@@ -62,6 +63,8 @@ export async function createProject(input: {
     },
   });
 
+  await logActivity({ tenantId: tId, actorId: user.id, verb: "created project", target: `${id} — ${input.title}`, projectId: id });
+
   revalidatePath("/projects");
   revalidatePath("/");
   revalidatePath("/pipeline");
@@ -85,6 +88,8 @@ export async function advanceProjectStage(projectId: string) {
     prisma.projectStage.update({ where: { id: next.id }, data: { state: "active", startedAt: now } }),
     prisma.project.update({ where: { id: projectId }, data: { currentStage: next.key } }),
   ]);
+
+  await logActivity({ tenantId: user.tenantId, actorId: user.id, verb: "advanced stage", target: `${projectId} → ${next.key}`, projectId });
 
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");

@@ -2,14 +2,25 @@
 
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 import { USERS } from "@/lib/mock/org";
+
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  return (h.get("x-forwarded-for")?.split(",")[0].trim()) || h.get("x-real-ip") || "unknown";
+}
 
 export async function signIn(formData: FormData): Promise<{ error?: string }> {
   const email = String(formData.get("email") || "").toLowerCase().trim();
   const password = String(formData.get("password") || "");
   if (!email || !password) return { error: "Email and password are required." };
+
+  // Throttle credential guessing: 5 attempts / minute per IP.
+  const limit = rateLimit(`signin:${await clientIp()}`, 5, 60_000);
+  if (!limit.ok) return { error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` };
 
   try {
     const user = await prisma.user.findFirst({ where: { email } });
@@ -39,6 +50,11 @@ export async function registerTenant(formData: FormData): Promise<{ error?: stri
   if (!company || !name || !email || password.length < 6) {
     return { error: "All fields required; password must be at least 6 characters." };
   }
+
+  // Throttle signup abuse: 3 new workspaces / 10 minutes per IP.
+  const limit = rateLimit(`register:${await clientIp()}`, 3, 10 * 60_000);
+  if (!limit.ok) return { error: `Too many sign-up attempts. Try again in ${limit.retryAfterSec}s.` };
+
   const exists = await prisma.user.findFirst({ where: { email } });
   if (exists) return { error: "An account with that email already exists." };
 

@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth";
 import { can, type Perm } from "@/lib/permissions";
 import { getCommercialConfig, getQuoteTemplate } from "@/lib/data";
 import { effectiveCommercial, type CustomerCommercial } from "@/lib/commercial";
+import { logActivity } from "@/lib/activity";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -38,6 +39,7 @@ export async function setQuotationStatus(projectId: string, status: string) {
   const user = await authorize("quotation.issue");
   const res = await prisma.quotation.updateMany({ where: { projectId, tenantId: user.tenantId }, data: { status, updatedAt: today() } });
   if (res.count === 0) return { ok: false, reason: "not-found" };
+  await logActivity({ tenantId: user.tenantId, actorId: user.id, verb: "set quotation status", target: `${projectId} → ${status}`, projectId });
   revalidatePath(`/quotations/${projectId}`);
   revalidatePath("/quotations");
   revalidatePath("/");

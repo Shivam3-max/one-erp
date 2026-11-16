@@ -13,7 +13,7 @@ import {
   getStaleArtifacts, getActivityFeed, getCustomerMap, getUserMap, getTenant,
 } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
-import { money, shortDate, relDate } from "@/lib/format";
+import { money, shortDate, relDate, fiscalQuarter } from "@/lib/format";
 import { healthTone, healthLabel } from "@/lib/status";
 import { ACCESS_LABEL } from "@/lib/permissions";
 
@@ -26,6 +26,7 @@ export default async function OverviewPage() {
   ]);
   const stageDist = stageDistAll.filter((s) => s.count > 0);
   const maxVal = Math.max(...stageDist.map((s) => s.value), 1);
+  const customerCount = new Set(projects.map((p) => p.customerId)).size;
   const attention = projects
     .filter((p) => p.health === "at-risk" || p.health === "critical")
     .sort((a, b) => b.value.amount - a.value.amount);
@@ -38,7 +39,7 @@ export default async function OverviewPage() {
         subtitle="Every inquiry is a project. Every project moves along one spine."
         action={
           <div className="flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-[12.5px] font-medium text-ink-2">
-            <Clock className="h-3.5 w-3.5 text-ink-4" /> This quarter · Q3 FY26
+            <Clock className="h-3.5 w-3.5 text-ink-4" /> This quarter · {fiscalQuarter()}
           </div>
         }
       />
@@ -46,13 +47,13 @@ export default async function OverviewPage() {
       {/* KPI row */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Order Book" value={inr(m.orderBook)} icon={Wallet} accent="brand"
-          delta={{ value: "12.4%", up: true }} sub="in execution" />
+          sub="in execution" />
         <Stat label="Live Pipeline" value={inr(m.pipelineValue)} icon={TrendingUp} accent="copper"
-          delta={{ value: "8.1%", up: true }} sub="pre-order" />
+          sub="pre-order" />
         <Stat label="Active Projects" value={String(m.activeCount)} icon={FolderKanban}
-          sub="across 9 customers" />
+          sub={`across ${customerCount} customer${customerCount === 1 ? "" : "s"}`} />
         <Stat label="Avg Margin" value={m.avgMargin.toFixed(1)} unit="%" icon={Percent} accent="ok"
-          delta={{ value: "0.6%", up: false }} sub="won orders" />
+          sub="won orders" />
         <Stat label="Needs Attention" value={String(m.atRiskCount + m.staleCount)} icon={TriangleAlert} accent="warn"
           sub={`${m.atRiskCount} at-risk · ${m.staleCount} stale`} />
       </div>

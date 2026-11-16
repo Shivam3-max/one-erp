@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can, type Perm } from "@/lib/permissions";
+import { logActivity } from "@/lib/activity";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -76,6 +77,7 @@ export async function awardPO(reqId: string, vendorId: string) {
     where: { id: reqId },
     data: { status: "po", vendorId, poNo: await nextPoNo(), value: q?.price ?? r.value },
   });
+  await logActivity({ tenantId: user.tenantId, actorId: user.id, verb: "awarded PO", target: `${r.item} → vendor ${vendorId}`, projectId: r.projectId });
   revalidatePath("/procurement");
   return { ok: true };
 }
