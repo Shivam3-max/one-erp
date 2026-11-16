@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { cache } from "react";
 import { prisma } from "./db";
-import { TENANT, USERS } from "./mock/org";
+import { TENANT, USERS, MOCK_ACCESS_LEVEL } from "./mock/org";
 
 if (!process.env.AUTH_SECRET) {
   throw new Error(
@@ -33,7 +33,7 @@ function mockSessionUserById(userId: string): SessionUser | null {
     initials: user.initials,
     role: user.role,
     department: user.department,
-    accessLevel: user.id === "U-09" ? "admin" : "member",
+    accessLevel: MOCK_ACCESS_LEVEL[user.id] ?? "member",
     email: user.email,
   };
 }

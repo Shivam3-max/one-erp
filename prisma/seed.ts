@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { TENANT, USERS, CUSTOMERS } from "../lib/mock/org";
+import { TENANT, USERS, CUSTOMERS, MOCK_ACCESS_LEVEL } from "../lib/mock/org";
 import { PROJECTS } from "../lib/mock/projects";
 import { artifactsForProject } from "../lib/mock/artifacts";
 import { OPPORTUNITIES } from "../lib/mock/pipeline";
@@ -35,9 +35,8 @@ async function main() {
   await prisma.tenant.create({ data: { id: TENANT.id, name: TENANT.name, code: TENANT.code, logoText: TENANT.logoText, primaryCurrency: TENANT.primaryCurrency, country: TENANT.country } });
 
   const passwordHash = await bcrypt.hash("candron123", 10);
-  const LEVEL: Record<string, string> = { "U-09": "admin", "U-05": "manager", "U-01": "manager" };
-  await prisma.user.createMany({ data: USERS.map((u) => ({ id: u.id, tenantId: T, name: u.name, initials: u.initials, role: u.role, department: u.department, email: u.email, passwordHash, accessLevel: LEVEL[u.id] ?? "member" })) });
-  await prisma.user.create({ data: { id: "U-10", tenantId: T, name: "Guest Viewer", initials: "GV", role: "Viewer", department: "sales", email: "viewer@candron.in", passwordHash, accessLevel: "viewer" } });
+  // USERS now includes the Guest Viewer (U-10); access levels come from the shared map.
+  await prisma.user.createMany({ data: USERS.map((u) => ({ id: u.id, tenantId: T, name: u.name, initials: u.initials, role: u.role, department: u.department, email: u.email, passwordHash, accessLevel: MOCK_ACCESS_LEVEL[u.id] ?? "member" })) });
 
   // customers + contacts
   for (const c of CUSTOMERS) {

@@ -322,12 +322,14 @@ export async function getActivityFeed(limit = 12): Promise<ActivityFeedItem[]> {
 /* ---------------- sales / pipeline ---------------- */
 
 export async function getOpportunities(): Promise<Opportunity[]> {
-  const rows = await prisma.opportunity.findMany({ where: { tenantId: await currentTenantId() } });
-  return rows.map((o) => ({
-    id: o.id, title: o.title, customerId: o.customerId, stage: o.stage as Opportunity["stage"],
-    value: o.value, ownerId: o.ownerId, expectedClose: o.expectedClose, source: o.source,
-    projectId: o.projectId ?? undefined, lastActivity: o.lastActivity,
-  }));
+  return withFallback(async () => {
+    const rows = await prisma.opportunity.findMany({ where: { tenantId: await currentTenantId() } });
+    return rows.map((o) => ({
+      id: o.id, title: o.title, customerId: o.customerId, stage: o.stage as Opportunity["stage"],
+      value: o.value, ownerId: o.ownerId, expectedClose: o.expectedClose, source: o.source,
+      projectId: o.projectId ?? undefined, lastActivity: o.lastActivity,
+    }));
+  }, () => OPPORTUNITIES);
 }
 
 /* ---------------- CRM ---------------- */

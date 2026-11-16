@@ -19,7 +19,16 @@ export const USERS: User[] = [
   { id: "U-07", tenantId: TENANT.id, name: "Suresh Patil", initials: "SP", role: "Production Manager", department: "manufacturing", email: "suresh@candron.in" },
   { id: "U-08", tenantId: TENANT.id, name: "Anil Kumar", initials: "AK", role: "Testing Engineer", department: "quality", email: "anil@candron.in" },
   { id: "U-09", tenantId: TENANT.id, name: "Meera Shah", initials: "MS", role: "Director", department: "management", email: "meera@candron.in" },
+  { id: "U-10", tenantId: TENANT.id, name: "Guest Viewer", initials: "GV", role: "Viewer", department: "sales", email: "viewer@candron.in" },
 ];
+
+/** Access level per demo user — mirrors the seed so dev (mock) mode behaves like a seeded DB. */
+export const MOCK_ACCESS_LEVEL: Record<string, string> = {
+  "U-09": "admin",
+  "U-05": "manager",
+  "U-01": "manager",
+  "U-10": "viewer",
+};
 
 export const CURRENT_USER = USERS[8]; // Director view — sees everything
 

@@ -14,6 +14,11 @@ async function clientIp(): Promise<string> {
   return (h.get("x-forwarded-for")?.split(",")[0].trim()) || h.get("x-real-ip") || "unknown";
 }
 
+// Attempt caps are env-tunable (e.g. relaxed for E2E, which logs in many times
+// from one IP). Production leaves them at the defaults below.
+const SIGNIN_MAX = Number(process.env.SIGNIN_RATE_MAX) || 5;
+const REGISTER_MAX = Number(process.env.REGISTER_RATE_MAX) || 3;
+
 export async function signIn(formData: FormData): Promise<{ error?: string }> {
   const parsed = parseInput(signInSchema, {
     email: formData.get("email"),
@@ -23,8 +28,8 @@ export async function signIn(formData: FormData): Promise<{ error?: string }> {
   const email = parsed.data.email.toLowerCase();
   const password = parsed.data.password;
 
-  // Throttle credential guessing: 5 attempts / minute per IP.
-  const limit = rateLimit(`signin:${await clientIp()}`, 5, 60_000);
+  // Throttle credential guessing per IP.
+  const limit = rateLimit(`signin:${await clientIp()}`, SIGNIN_MAX, 60_000);
   if (!limit.ok) return { error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` };
 
   try {
@@ -58,8 +63,8 @@ export async function registerTenant(formData: FormData): Promise<{ error?: stri
   const { company, name, password } = parsed.data;
   const email = parsed.data.email.toLowerCase();
 
-  // Throttle signup abuse: 3 new workspaces / 10 minutes per IP.
-  const limit = rateLimit(`register:${await clientIp()}`, 3, 10 * 60_000);
+  // Throttle signup abuse per IP.
+  const limit = rateLimit(`register:${await clientIp()}`, REGISTER_MAX, 10 * 60_000);
   if (!limit.ok) return { error: `Too many sign-up attempts. Try again in ${limit.retryAfterSec}s.` };
 
   const exists = await prisma.user.findFirst({ where: { email } });
