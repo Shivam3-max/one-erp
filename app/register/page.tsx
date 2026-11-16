@@ -2,7 +2,11 @@ import Link from "next/link";
 import { Zap } from "lucide-react";
 import { RegisterForm } from "@/components/auth/RegisterForm";
 
-export const metadata = { title: "Create workspace · CANDRON OneERP" };
+export const metadata = {
+  title: "Create workspace · CANDRON OneERP",
+  description: "Create your company workspace on CANDRON OneERP — manage the full project lifecycle from inquiry to warranty.",
+  robots: { index: true, follow: true },
+};
 
 export default function RegisterPage() {
   return (

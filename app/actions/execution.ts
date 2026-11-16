@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { requireUser } from "@/lib/auth";
 import { can, type Perm } from "@/lib/permissions";
 import { logActivity } from "@/lib/activity";
+import { vendorQuotePrice, vendorLeadWeeks } from "@/lib/procurement/pricing";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -58,8 +59,8 @@ export async function raiseRFQ(reqId: string) {
   const quotes = pool.map((v, i) => ({
     vendorId: v.id,
     vendorName: v.name,
-    price: Math.round(r.value * (0.95 + i * 0.06 + Math.random() * 0.04)),
-    leadWeeks: 5 + i * 2,
+    price: vendorQuotePrice(r.value, v, i),
+    leadWeeks: vendorLeadWeeks(i),
   }));
   await prisma.materialReq.update({ where: { id: reqId }, data: { status: "rfq", quotes } });
   revalidatePath("/procurement");

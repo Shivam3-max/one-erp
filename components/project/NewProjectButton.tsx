@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { createProject } from "@/app/actions/projects";
+import { useModalA11y } from "@/components/ui/useModalA11y";
 
 export function NewProjectButton({ customers }: { customers: { id: string; name: string }[] }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const dialogRef = useModalA11y(open, () => !pending && setOpen(false));
 
   const [form, setForm] = useState({
     title: "", customerId: customers[0]?.id ?? "", productSummary: "",
@@ -42,14 +44,14 @@ export function NewProjectButton({ customers }: { customers: { id: string; name:
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/30 p-4 backdrop-blur-sm" onClick={() => !pending && setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()}
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="new-project-title" onClick={(e) => e.stopPropagation()}
             className="mt-16 w-full max-w-lg rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-pop)]">
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <div>
-                <h2 className="text-[15px] font-bold text-ink">New Project</h2>
+                <h2 id="new-project-title" className="text-[15px] font-bold text-ink">New Project</h2>
                 <p className="text-[12px] text-ink-3">Every inquiry becomes a project on the spine, starting at Lead.</p>
               </div>
-              <button onClick={() => setOpen(false)} className="text-ink-4 hover:text-ink"><X className="h-5 w-5" /></button>
+              <button onClick={() => setOpen(false)} aria-label="Close dialog" className="text-ink-4 hover:text-ink"><X className="h-5 w-5" /></button>
             </div>
             <div className="space-y-3.5 p-5">
               <Field label="Project title" required>

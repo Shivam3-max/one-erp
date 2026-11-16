@@ -2,7 +2,11 @@ import Link from "next/link";
 import { Zap } from "lucide-react";
 import { LoginForm } from "@/components/auth/LoginForm";
 
-export const metadata = { title: "Sign in · CANDRON OneERP" };
+export const metadata = {
+  title: "Sign in · CANDRON OneERP",
+  description: "Sign in to CANDRON OneERP — the project lifecycle platform for electrical equipment manufacturers.",
+  robots: { index: true, follow: true },
+};
 
 export default function LoginPage() {
   return (

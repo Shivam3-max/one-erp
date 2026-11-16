@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Send, X } from "lucide-react";
 import { logCommunication } from "@/app/actions/crm";
+import { useModalA11y } from "@/components/ui/useModalA11y";
 
 export function LogCommButton({ customerId }: { customerId: string }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
   const router = useRouter();
+  const dialogRef = useModalA11y(open, () => !pending && setOpen(false));
   const [form, setForm] = useState({ type: "email", subject: "", summary: "" });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -29,10 +31,10 @@ export function LogCommButton({ customerId }: { customerId: string }) {
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/30 p-4 backdrop-blur-sm" onClick={() => !pending && setOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="mt-24 w-full max-w-md rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-pop)]">
+          <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="log-comm-title" onClick={(e) => e.stopPropagation()} className="mt-24 w-full max-w-md rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-pop)]">
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-              <h2 className="text-[14px] font-bold text-ink">Log communication</h2>
-              <button onClick={() => setOpen(false)}><X className="h-5 w-5 text-ink-4 hover:text-ink" /></button>
+              <h2 id="log-comm-title" className="text-[14px] font-bold text-ink">Log communication</h2>
+              <button onClick={() => setOpen(false)} aria-label="Close dialog"><X className="h-5 w-5 text-ink-4 hover:text-ink" /></button>
             </div>
             <div className="space-y-3 p-5">
               <div>
