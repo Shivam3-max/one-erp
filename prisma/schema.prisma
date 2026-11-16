@@ -1,10 +1,10 @@
-// CANDRON OneERP — data model (SQLite for local; tenantId on every table for multi-tenant).
+// CANDRON OneERP — data model (MySQL; tenantId on every table for multi-tenancy).
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -28,6 +28,8 @@ model User {
   email        String  @unique
   passwordHash String?
   accessLevel  String  @default("member")
+
+  @@index([tenantId])
 }
 
 model Customer {
@@ -43,6 +45,8 @@ model Customer {
   since      String
   commercial Json?
   contacts   Contact[]
+
+  @@index([tenantId])
 }
 
 model Contact {
@@ -54,6 +58,8 @@ model Contact {
   email      String
   phone      String
   primary    Boolean  @default(false)
+
+  @@index([customerId])
 }
 
 model Communication {
@@ -62,9 +68,12 @@ model Communication {
   customerId String
   type       String
   subject    String
-  summary    String
+  summary    String @db.Text
   userId     String
   date       String
+
+  @@index([tenantId])
+  @@index([customerId])
 }
 
 model Opportunity {
@@ -80,6 +89,9 @@ model Opportunity {
   source        String
   projectId     String?
   lastActivity  String
+
+  @@index([tenantId])
+  @@index([customerId])
 }
 
 model Project {
@@ -101,6 +113,9 @@ model Project {
   tags           Json
   stages         ProjectStage[]
   artifacts      Artifact[]
+
+  @@index([tenantId])
+  @@index([customerId])
 }
 
 model ProjectStage {
@@ -113,7 +128,9 @@ model ProjectStage {
   startedAt   String?
   completedAt String?
   ownerId     String?
-  note        String?
+  note        String? @db.Text
+
+  @@index([projectId])
 }
 
 model Artifact {
@@ -132,6 +149,9 @@ model Artifact {
   meta            Json?
   revisions       Revision[]
   links           ArtifactLink[]
+
+  @@index([tenantId])
+  @@index([projectId])
 }
 
 model Revision {
@@ -141,7 +161,9 @@ model Revision {
   rev           Int
   createdAt     String
   authorId      String
-  changeSummary String
+  changeSummary String   @db.Text
+
+  @@index([artifactId])
 }
 
 model ArtifactLink {
@@ -151,6 +173,8 @@ model ArtifactLink {
   toArtifactId String
   type         String
   atRevision   Int
+
+  @@index([artifactId])
 }
 
 model ProductFamily {
@@ -158,10 +182,12 @@ model ProductFamily {
   tenantId       String
   name           String
   category       String
-  blurb          String
+  blurb          String  @db.Text
   attributeCount Int
   active         Boolean @default(true)
   schema         Json?
+
+  @@index([tenantId])
 }
 
 // One flexible per-tenant configuration blob: commercial defaults, quotation
@@ -184,34 +210,39 @@ model Configuration {
   validated Boolean @default(true)
   createdAt String
   createdBy String
+
+  @@index([tenantId])
+  @@index([projectId])
 }
 
 model Quotation {
-  id           String          @id @default(cuid())
-  tenantId     String
-  projectId    String          @unique
-  customerId   String
-  code         String          @unique
-  revision     Int             @default(1)
-  status       String
-  validityDays Int             @default(60)
-  ownerId      String
-  product      String
-  lineItems    Json
-  packing      Float
-  freight      Float
-  insurance    Float
-  gstPct       Float           @default(18)
-  paymentTerms String
+  id            String          @id @default(cuid())
+  tenantId      String
+  projectId     String          @unique
+  customerId    String
+  code          String          @unique
+  revision      Int             @default(1)
+  status        String
+  validityDays  Int             @default(60)
+  ownerId       String
+  product       String
+  lineItems     Json
+  packing       Float
+  freight       Float
+  insurance     Float
+  gstPct        Float           @default(18)
+  paymentTerms  String
   deliveryWeeks Int
-  scope        Json
-  exclusions   Json
-  terms        Json
-  blocks       Json
-  createdAt    String
-  updatedAt    String
-  revisions    QuoteRevision[]
-  approvals    QuoteApproval[]
+  scope         Json
+  exclusions    Json
+  terms         Json
+  blocks        Json
+  createdAt     String
+  updatedAt     String
+  revisions     QuoteRevision[]
+  approvals     QuoteApproval[]
+
+  @@index([tenantId])
 }
 
 model QuoteRevision {
@@ -221,7 +252,9 @@ model QuoteRevision {
   rev         Int
   date        String
   authorId    String
-  change      String
+  change      String    @db.Text
+
+  @@index([quotationId])
 }
 
 model QuoteApproval {
@@ -232,6 +265,8 @@ model QuoteApproval {
   userId      String
   status      String
   date        String?
+
+  @@index([quotationId])
 }
 
 model ComplianceItem {
@@ -240,12 +275,15 @@ model ComplianceItem {
   projectId       String
   clause          String
   category        String
-  requirement     String
-  companySpec     String
+  requirement     String  @db.Text
+  companySpec     String  @db.Text
   status          String
-  deviation       String?
-  engineerComment String?
+  deviation       String? @db.Text
+  engineerComment String? @db.Text
   engineerId      String
+
+  @@index([tenantId])
+  @@index([projectId])
 }
 
 model Vendor {
@@ -256,6 +294,8 @@ model Vendor {
   rating    String
   location  String
   onTimePct Int
+
+  @@index([tenantId])
 }
 
 model MaterialReq {
@@ -272,6 +312,9 @@ model MaterialReq {
   status     String
   value      Float
   quotes     Json?
+
+  @@index([tenantId])
+  @@index([projectId])
 }
 
 model WorkOrder {
@@ -286,7 +329,10 @@ model WorkOrder {
   startedAt    String
   progress     Int
   status       String
-  issue        String?
+  issue        String? @db.Text
+
+  @@index([tenantId])
+  @@index([projectId])
 }
 
 model TestUnit {
@@ -299,6 +345,9 @@ model TestUnit {
   certIssued   Boolean      @default(false)
   issuedAt     String?
   tests        TestRecord[]
+
+  @@index([tenantId])
+  @@index([projectId])
 }
 
 model TestRecord {
@@ -312,15 +361,19 @@ model TestRecord {
   limit      String?
   engineerId String
   witnessed  Boolean  @default(false)
+
+  @@index([testUnitId])
 }
 
 model WorkflowConfig {
-  id           String @id @default(cuid())
-  tenantId     String
-  artifactType String
-  label        String
-  states       Json
+  id            String @id @default(cuid())
+  tenantId      String
+  artifactType  String
+  label         String
+  states        Json
   approvalChain Json
+
+  @@index([tenantId])
 }
 
 model StandardRef {
@@ -329,6 +382,8 @@ model StandardRef {
   code     String
   title    String
   scope    String
+
+  @@index([tenantId])
 }
 
 model RateCard {
@@ -339,6 +394,8 @@ model RateCard {
   active        Boolean @default(false)
   rates         Json
   factors       Json?
+
+  @@index([tenantId])
 }
 
 model Activity {
@@ -347,6 +404,8 @@ model Activity {
   projectId String?
   actorId   String
   verb      String
-  target    String
+  target    String  @db.Text
   at        String
+
+  @@index([tenantId])
 }

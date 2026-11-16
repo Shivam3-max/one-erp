@@ -70,8 +70,8 @@ export async function createProject(input: {
 
 /** Move a project one step forward along the lifecycle spine. */
 export async function advanceProjectStage(projectId: string) {
-  await authorize("project.advance");
-  const project = await prisma.project.findUnique({ where: { id: projectId }, include: { stages: true } });
+  const user = await authorize("project.advance");
+  const project = await prisma.project.findFirst({ where: { id: projectId, tenantId: user.tenantId }, include: { stages: true } });
   if (!project) return { ok: false };
   const ordered = [...project.stages].sort((a, b) => a.order - b.order);
   const curIdx = ordered.findIndex((s) => s.state === "active");
@@ -92,8 +92,14 @@ export async function advanceProjectStage(projectId: string) {
   return { ok: true, stage: next.key };
 }
 
+const HEALTH_VALUES = ["on-track", "at-risk", "critical", "closed"];
+
 export async function setProjectHealth(projectId: string, health: string) {
-  await prisma.project.update({ where: { id: projectId }, data: { health } });
+  const user = await authorize("project.advance");
+  if (!HEALTH_VALUES.includes(health)) return { ok: false, reason: "invalid" };
+  const project = await prisma.project.findFirst({ where: { id: projectId, tenantId: user.tenantId }, select: { id: true } });
+  if (!project) return { ok: false, reason: "not-found" };
+  await prisma.project.update({ where: { id: project.id }, data: { health } });
   revalidatePath(`/projects/${projectId}`);
   revalidatePath("/projects");
   revalidatePath("/");

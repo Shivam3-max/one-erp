@@ -16,8 +16,8 @@ async function authorize(perm: Perm) {
 }
 
 export async function setApprovalStatus(projectId: string, role: string, status: "approved" | "pending" | "rejected") {
-  await authorize("quotation.approve");
-  const q = await prisma.quotation.findUnique({ where: { projectId }, include: { approvals: true } });
+  const user = await authorize("quotation.approve");
+  const q = await prisma.quotation.findFirst({ where: { projectId, tenantId: user.tenantId }, include: { approvals: true } });
   if (!q) return { ok: false };
   const appr = q.approvals.find((a: { role: string }) => a.role === role);
   if (!appr) return { ok: false };
@@ -35,8 +35,9 @@ export async function setApprovalStatus(projectId: string, role: string, status:
 }
 
 export async function setQuotationStatus(projectId: string, status: string) {
-  await authorize("quotation.issue");
-  await prisma.quotation.update({ where: { projectId }, data: { status, updatedAt: today() } });
+  const user = await authorize("quotation.issue");
+  const res = await prisma.quotation.updateMany({ where: { projectId, tenantId: user.tenantId }, data: { status, updatedAt: today() } });
+  if (res.count === 0) return { ok: false, reason: "not-found" };
   revalidatePath(`/quotations/${projectId}`);
   revalidatePath("/quotations");
   revalidatePath("/");
@@ -44,8 +45,8 @@ export async function setQuotationStatus(projectId: string, status: string) {
 }
 
 export async function reviseQuotation(projectId: string, change: string) {
-  await authorize("quotation.issue");
-  const q = await prisma.quotation.findUnique({ where: { projectId } });
+  const user = await authorize("quotation.issue");
+  const q = await prisma.quotation.findFirst({ where: { projectId, tenantId: user.tenantId } });
   if (!q) return { ok: false };
   const nextRev = q.revision + 1;
   const now = today();
@@ -64,7 +65,9 @@ export async function reviseQuotation(projectId: string, change: string) {
 }
 
 export async function saveQuotationBlocks(projectId: string, blocks: { type: string; title: string; included: boolean }[]) {
-  await prisma.quotation.update({ where: { projectId }, data: { blocks } });
+  const user = await authorize("quotation.issue");
+  const res = await prisma.quotation.updateMany({ where: { projectId, tenantId: user.tenantId }, data: { blocks } });
+  if (res.count === 0) return { ok: false, reason: "not-found" };
   revalidatePath(`/quotations/${projectId}`);
   return { ok: true };
 }
@@ -79,14 +82,13 @@ const ALL_BLOCKS = [
 
 /** Build & persist a quotation from a project's data (for projects without one yet). */
 export async function createQuotationForProject(projectId: string) {
-  await authorize("quotation.create");
+  const user = await authorize("quotation.create");
   const existing = await prisma.quotation.findUnique({ where: { projectId } });
   if (existing) return { ok: false, reason: "exists" };
-  const p = await prisma.project.findUnique({ where: { id: projectId } });
+  const p = await prisma.project.findFirst({ where: { id: projectId, tenantId: user.tenantId } });
   if (!p) return { ok: false, reason: "no-project" };
 
-  const t = await prisma.tenant.findFirst({ select: { id: true } });
-  const tenantId = t?.id ?? "T-CANDRON";
+  const tenantId = user.tenantId;
   const now = today();
   const num = projectId.split("-").pop() ?? "0000";
   const qtyMatch = p.productSummary.match(/^(\d+)\s*[×x]/);

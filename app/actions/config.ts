@@ -23,10 +23,13 @@ export async function saveConfiguration(input: {
   const tenantId = user.tenantId;
   const now = new Date().toISOString().slice(0, 10);
 
+  const project = await prisma.project.findFirst({ where: { id: input.projectId, tenantId }, select: { id: true } });
+  if (!project) return { ok: false, reason: "not-found" };
+
   const cfg = await prisma.configuration.create({
     data: {
       tenantId, projectId: input.projectId, familyId: input.familyId, name: input.summary,
-      values: input.values as object, marginPct: input.marginPct, validated: true, createdAt: now, createdBy: "U-03",
+      values: input.values as object, marginPct: input.marginPct, validated: true, createdAt: now, createdBy: user.id,
     },
   });
 
@@ -36,8 +39,8 @@ export async function saveConfiguration(input: {
     data: {
       id: artId, tenantId, projectId: input.projectId, type: "configuration",
       title: `Configuration — ${input.summary}`, status: "approved", stage: "technical-design",
-      currentRevision: 1, ownerId: "U-03", updatedAt: now, upstreamStale: false,
-      revisions: { create: [{ rev: 1, createdAt: now, authorId: "U-03", changeSummary: `Configured ${input.familyName} (${input.summary}).` }] },
+      currentRevision: 1, ownerId: user.id, updatedAt: now, upstreamStale: false,
+      revisions: { create: [{ rev: 1, createdAt: now, authorId: user.id, changeSummary: `Configured ${input.familyName} (${input.summary}).` }] },
     },
   });
 
@@ -56,6 +59,8 @@ export async function saveEstimate(input: {
 }) {
   const user = await authz();
   const now = new Date().toISOString().slice(0, 10);
+  const project = await prisma.project.findFirst({ where: { id: input.projectId, tenantId: user.tenantId }, select: { id: true } });
+  if (!project) return { ok: false, reason: "not-found" };
   const num = input.projectId.split("-").pop() ?? "0000";
   const artId = `COST-${num}-${Date.now().toString().slice(-4)}`;
   await prisma.artifact.create({

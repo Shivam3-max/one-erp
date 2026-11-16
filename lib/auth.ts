@@ -4,9 +4,12 @@ import { cache } from "react";
 import { prisma } from "./db";
 import { TENANT, USERS } from "./mock/org";
 
-const SECRET = new TextEncoder().encode(
-  process.env.AUTH_SECRET || "candron-dev-secret-key-please-change-in-production-0192837465"
-);
+if (!process.env.AUTH_SECRET) {
+  throw new Error(
+    "AUTH_SECRET is not set. Generate one with `openssl rand -base64 48` and set it in the environment before starting the app.",
+  );
+}
+const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET);
 export const SESSION_COOKIE = "candron_session";
 
 export interface SessionUser {

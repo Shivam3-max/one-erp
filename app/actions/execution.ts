@@ -46,7 +46,7 @@ async function nextPoNo() {
 /** Raise an RFQ: generate quotes from vendors in the category. */
 export async function raiseRFQ(reqId: string) {
   const user = await authorize("procurement.manage");
-  const r = await prisma.materialReq.findUnique({ where: { id: reqId } });
+  const r = await prisma.materialReq.findFirst({ where: { id: reqId, tenantId: user.tenantId } });
   if (!r || r.status === "po" || r.status === "received") return { ok: false };
   const vendors = await prisma.vendor.findMany({ where: { tenantId: user.tenantId } });
   // Primary vendors for this category first, then padded with alternates so the
@@ -67,8 +67,8 @@ export async function raiseRFQ(reqId: string) {
 
 /** Award the PO to a vendor from the RFQ comparison. */
 export async function awardPO(reqId: string, vendorId: string) {
-  await authorize("procurement.manage");
-  const r = await prisma.materialReq.findUnique({ where: { id: reqId } });
+  const user = await authorize("procurement.manage");
+  const r = await prisma.materialReq.findFirst({ where: { id: reqId, tenantId: user.tenantId } });
   if (!r) return { ok: false };
   const quotes = (r.quotes as { vendorId: string; price: number }[] | null) ?? [];
   const q = quotes.find((x) => x.vendorId === vendorId);
@@ -81,8 +81,8 @@ export async function awardPO(reqId: string, vendorId: string) {
 }
 
 export async function advanceRequirement(id: string) {
-  await authorize("procurement.manage");
-  const r = await prisma.materialReq.findUnique({ where: { id } });
+  const user = await authorize("procurement.manage");
+  const r = await prisma.materialReq.findFirst({ where: { id, tenantId: user.tenantId } });
   if (!r) return { ok: false };
   const idx = REQ_ORDER.indexOf(r.status);
   if (idx < 0 || idx >= REQ_ORDER.length - 1) return { ok: false };
@@ -106,8 +106,8 @@ export async function advanceRequirement(id: string) {
 /* ---------------- Manufacturing ---------------- */
 
 export async function advanceWorkOrder(id: string) {
-  await authorize("manufacturing.manage");
-  const w = await prisma.workOrder.findUnique({ where: { id } });
+  const user = await authorize("manufacturing.manage");
+  const w = await prisma.workOrder.findFirst({ where: { id, tenantId: user.tenantId } });
   if (!w) return { ok: false };
   let progress = Math.min(100, w.progress + 25);
   let status = "in-progress";
@@ -118,8 +118,8 @@ export async function advanceWorkOrder(id: string) {
 }
 
 export async function toggleWorkOrderHold(id: string) {
-  await authorize("manufacturing.manage");
-  const w = await prisma.workOrder.findUnique({ where: { id } });
+  const user = await authorize("manufacturing.manage");
+  const w = await prisma.workOrder.findFirst({ where: { id, tenantId: user.tenantId } });
   if (!w) return { ok: false };
   const status = w.status === "hold"
     ? (w.progress >= 100 ? "done" : w.progress > 0 ? "in-progress" : "queued")
@@ -132,8 +132,11 @@ export async function toggleWorkOrderHold(id: string) {
 /* ---------------- Testing ---------------- */
 
 export async function recordTestResult(testRecordId: string, result: "pass" | "fail") {
-  await authorize("testing.manage");
-  const tr = await prisma.testRecord.findUnique({ where: { id: testRecordId } });
+  const user = await authorize("testing.manage");
+  if (result !== "pass" && result !== "fail") return { ok: false, reason: "invalid" };
+  const tr = await prisma.testRecord.findFirst({
+    where: { id: testRecordId, unit: { tenantId: user.tenantId } },
+  });
   if (!tr) return { ok: false };
   await prisma.testRecord.update({ where: { id: testRecordId }, data: { result } });
 
@@ -167,8 +170,8 @@ const PROD_PLAN = [
 
 /** Explode a project into its standard manufacturing work orders (one set per unit). */
 export async function generateWorkOrders(projectId: string) {
-  await authorize("manufacturing.manage");
-  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  const user = await authorize("manufacturing.manage");
+  const project = await prisma.project.findFirst({ where: { id: projectId, tenantId: user.tenantId } });
   if (!project) return { ok: false, reason: "no-project" };
   if ((await prisma.workOrder.count({ where: { projectId } })) > 0) return { ok: false, reason: "exists" };
 
@@ -209,7 +212,7 @@ const TYPE_TESTS = [
 /** Generate a routine + type test plan (pending) for a project unit. */
 export async function generateTestPlan(projectId: string) {
   const user = await authorize("testing.manage");
-  const project = await prisma.project.findUnique({ where: { id: projectId } });
+  const project = await prisma.project.findFirst({ where: { id: projectId, tenantId: user.tenantId } });
   if (!project) return { ok: false, reason: "no-project" };
   const serial = `CTR/2026/${numOf(projectId)}/${Date.now().toString().slice(-3)}`;
   await prisma.testUnit.create({
