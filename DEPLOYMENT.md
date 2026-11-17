@@ -16,19 +16,42 @@ Use one of:
 
 MySQL is available on both via hPanel.
 
-## 1. Environment (both vars are REQUIRED — the app refuses to start without them)
+## 1. Environment (a DB config and AUTH_SECRET are REQUIRED — the app refuses to start without them)
 
-Copy `.env.example` → `.env`:
+Copy `.env.example` → `.env`. For the database you have two options; pick one.
+
+**Option A — full connection string:**
 
 ```bash
-DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/oneerp"
+DATABASE_URL="mysql://USER:PASSWORD@HOST:3306/DBNAME"
+```
+
+**Option B — Hostinger shape (recommended on Hostinger):** set the discrete parts
+and the app composes the URL. hPanel gives you the database **name** and **user**
+as separate fields, usually prefixed (e.g. `u1234567_oneerp`):
+
+```bash
+DB_HOST="localhost"          # or the MySQL host hPanel shows
+DB_PORT="3306"
+DB_NAME="u1234567_oneerp"    # the DB name from hPanel
+DB_USER="u1234567_oneerp"    # the DB user from hPanel
+DB_PASSWORD="your-db-password"
+# DB_PARAMS="connection_limit=5"   # optional extra query params
+```
+
+`DATABASE_URL` takes precedence if both are set. The composition is shared by the
+app and the Prisma CLI (`npm run db:migrate` / `db:seed`), so the discrete vars
+work for migrations too.
+
+Also set:
+
+```bash
 AUTH_SECRET="<48-byte random>"   # openssl rand -base64 48
 ```
 
-- `DATABASE_URL` — the MySQL database you create in hPanel (user, password, db name).
-- `AUTH_SECRET` — signs the JWT session cookie. **Never commit it; never reuse the
-  example value.** There is no insecure fallback any more — a missing secret is a
-  hard startup error.
+`AUTH_SECRET` signs the JWT session cookie. **Never commit it; never reuse the
+example value.** There is no insecure fallback — a missing secret is a hard
+startup error.
 
 ## 2. Create the MySQL database (hPanel)
 

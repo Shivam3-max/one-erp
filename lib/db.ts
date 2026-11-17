@@ -1,13 +1,16 @@
 import { PrismaClient } from "@prisma/client";
+import { resolveDatabaseUrl } from "./db-url.mjs";
 
-if (!process.env.DATABASE_URL) {
+const databaseUrl = resolveDatabaseUrl();
+if (!databaseUrl) {
   throw new Error(
-    "DATABASE_URL is not set. Point it at your MySQL database, e.g. mysql://user:pass@host:3306/oneerp",
+    "No database configuration. Set DATABASE_URL, or the discrete DB_HOST / DB_NAME / DB_USER (+ DB_PASSWORD) variables.",
   );
 }
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+export const prisma =
+  globalForPrisma.prisma ?? new PrismaClient({ datasources: { db: { url: databaseUrl } } });
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
