@@ -60,7 +60,41 @@ startup error.
 3. Note the host (often `localhost` on a VPS, or the hostname hPanel shows) and build
    the `DATABASE_URL`.
 
-## 3. Deploy on a Hostinger VPS
+## 3a. Deploy on Hostinger Node.js hosting (hPanel + Passenger)
+
+Hostinger's Node.js app tier runs your app behind **Passenger**, which executes a
+single JS **startup file**. This project builds to Next's standalone server and a
+`postbuild` step copies the static assets next to it, so the startup file is
+`.next/standalone/server.js`.
+
+1. **MySQL** — hPanel → Databases → MySQL → create a database and user (note the
+   prefixed names, e.g. `u1234567_oneerp`).
+2. **Get the code** — hPanel → Git (or upload): clone
+   `https://github.com/Shivam3-max/one-erp.git` into your app folder.
+3. **Create the Node app** — hPanel → **Node.js** (Setup Node.js App):
+   - **Node version:** 22 (or the highest ≥ 20 available).
+   - **Application root:** the folder with the code.
+   - **Application URL:** your domain/subdomain.
+   - **Application startup file:** `.next/standalone/server.js`
+   - **Environment variables:** `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
+     `DB_PASSWORD`, `AUTH_SECRET`, and `NODE_ENV=production`.
+4. **Install, migrate, build** — open the app's terminal (hPanel gives one) and run:
+   ```bash
+   npm ci
+   npm run db:migrate      # creates the schema (reads DB_* from the env)
+   npm run db:seed         # first time only — loads demo data + the UAT users
+   npm run build           # builds + assembles .next/standalone (postbuild)
+   ```
+5. **Restart** the Node app in hPanel. Passenger serves `.next/standalone/server.js`
+   on the port it assigns (the server reads `PORT` automatically).
+6. **Verify:** open `/api/health` → `{"status":"ok","db":"up"}`, then walk `SOP.md`.
+
+> If hPanel can't run `npm run build` (limited terminal), build locally with the
+> same Node version and upload the `.next/` folder alongside the code.
+> Locally you can smoke-test the exact Passenger entry with:
+> `npm run build && PORT=3570 node .next/standalone/server.js` (env from your shell).
+
+## 3b. Deploy on a Hostinger VPS
 
 ```bash
 # one-time: Node 22 + PM2
