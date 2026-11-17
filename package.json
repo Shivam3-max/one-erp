@@ -16,6 +16,7 @@
     "postbuild": "node scripts/standalone-assets.mjs",
     "start": "next start -p 3550",
     "start:standalone": "node .next/standalone/server.js",
+    "start:prod": "node server.mjs",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",

@@ -75,18 +75,22 @@ single JS **startup file**. This project builds to Next's standalone server and 
    - **Node version:** 22 (or the highest ≥ 20 available).
    - **Application root:** the folder with the code.
    - **Application URL:** your domain/subdomain.
-   - **Application startup file:** `.next/standalone/server.js`
+   - **Application startup file:** `server.mjs` — this **applies pending
+     migrations (`prisma migrate deploy`) on every boot**, then starts the Next
+     standalone server. (Use `.next/standalone/server.js` directly if you prefer
+     to run migrations yourself.)
    - **Environment variables:** `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
      `DB_PASSWORD`, `AUTH_SECRET`, and `NODE_ENV=production`.
-4. **Install, migrate, build** — open the app's terminal (hPanel gives one) and run:
+4. **Install, build, seed** — open the app's terminal (hPanel gives one) and run:
    ```bash
    npm ci
-   npm run db:migrate      # creates the schema (reads DB_* from the env)
-   npm run db:seed         # first time only — loads demo data + the UAT users
    npm run build           # builds + assembles .next/standalone (postbuild)
+   npm run db:seed         # first time only — loads demo data + the UAT users
    ```
-5. **Restart** the Node app in hPanel. Passenger serves `.next/standalone/server.js`
-   on the port it assigns (the server reads `PORT` automatically).
+   You do **not** need to run `db:migrate` by hand — `server.mjs` applies pending
+   migrations automatically each time the app boots.
+5. **Restart** the Node app in hPanel. On boot `server.mjs` runs `prisma migrate
+   deploy`, then serves on the port Passenger assigns (the server reads `PORT`).
 6. **Verify:** open `/api/health` → `{"status":"ok","db":"up"}`, then walk `SOP.md`.
 
 > If hPanel can't run `npm run build` (limited terminal), build locally with the
