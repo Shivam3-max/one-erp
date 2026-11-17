@@ -4,12 +4,19 @@ import { cache } from "react";
 import { prisma } from "./db";
 import { TENANT, USERS, MOCK_ACCESS_LEVEL } from "./mock/org";
 
-if (!process.env.AUTH_SECRET) {
-  throw new Error(
-    "AUTH_SECRET is not set. Generate one with `openssl rand -base64 48` and set it in the environment before starting the app.",
-  );
+// Lazy so `next build` can load this module without AUTH_SECRET set; any sign/
+// verify at runtime still fails closed if it is missing.
+let _secret: Uint8Array | undefined;
+function SECRET(): Uint8Array {
+  if (_secret) return _secret;
+  if (!process.env.AUTH_SECRET) {
+    throw new Error(
+      "AUTH_SECRET is not set. Generate one with `openssl rand -base64 48` and set it in the environment before starting the app.",
+    );
+  }
+  _secret = new TextEncoder().encode(process.env.AUTH_SECRET);
+  return _secret;
 }
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET);
 export const SESSION_COOKIE = "candron_session";
 
 export interface SessionUser {
@@ -56,7 +63,7 @@ export async function createSession(userId: string) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(SECRET);
+    .sign(SECRET());
   const jar = await cookies();
   jar.set(SESSION_COOKIE, token, {
     httpOnly: true,
@@ -74,7 +81,7 @@ export async function destroySession() {
 
 export async function verifyToken(token: string): Promise<{ uid: string; tid: string; lvl: string } | null> {
   try {
-    const { payload } = await jwtVerify(token, SECRET);
+    const { payload } = await jwtVerify(token, SECRET());
     return payload as unknown as { uid: string; tid: string; lvl: string };
   } catch {
     return null;

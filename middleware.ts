@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-if (!process.env.AUTH_SECRET) {
-  throw new Error(
-    "AUTH_SECRET is not set. Generate one with `openssl rand -base64 48` and set it in the environment before starting the app.",
-  );
+// Lazy so the module can be loaded during `next build` without AUTH_SECRET set;
+// a real request still fails closed (verification throws) if it is missing.
+let _secret: Uint8Array | undefined;
+function SECRET(): Uint8Array {
+  if (_secret) return _secret;
+  if (!process.env.AUTH_SECRET) {
+    throw new Error(
+      "AUTH_SECRET is not set. Generate one with `openssl rand -base64 48` and set it in the environment before starting the app.",
+    );
+  }
+  _secret = new TextEncoder().encode(process.env.AUTH_SECRET);
+  return _secret;
 }
-const SECRET = new TextEncoder().encode(process.env.AUTH_SECRET);
 const PUBLIC = ["/login", "/register", "/api/health"];
 
 export async function middleware(req: NextRequest) {
@@ -24,7 +31,7 @@ export async function middleware(req: NextRequest) {
   let ok = false;
   if (token) {
     try {
-      await jwtVerify(token, SECRET);
+      await jwtVerify(token, SECRET());
       ok = true;
     } catch {
       ok = false;

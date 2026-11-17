@@ -1,4 +1,5 @@
-import type { NextConfig } from "next";
+// Plain JS config (no TS compile step) — more portable across build images,
+// including hosts whose glibc is too old for Next's native SWC.
 
 // Baseline Content-Security-Policy. Next injects inline bootstrap scripts and
 // Tailwind injects an inline <style>, so 'unsafe-inline' is required here until
@@ -26,7 +27,8 @@ const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
 ];
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   devIndicators: false,
   output: "standalone",
   async headers() {
