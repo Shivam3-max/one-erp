@@ -4,6 +4,7 @@
 //
 //   node scripts/with-db-url.mjs prisma migrate deploy
 //   node scripts/with-db-url.mjs tsx prisma/seed.ts
+import "dotenv/config"; // load .env so DATABASE_URL / DB_* are available to the CLI
 import { execSync } from "node:child_process";
 import { resolveDatabaseUrl } from "../lib/db-url.mjs";
 

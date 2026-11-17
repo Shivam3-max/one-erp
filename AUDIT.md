@@ -3,8 +3,47 @@
 **Date:** 2026-11-16 · **Auditor:** full-stack review (static code + running-app QA)
 **Build tested:** `next build` + `next start` on seeded SQLite, driven through the in-app browser and direct server-action calls.
 
-> **Verdict: 🔴 NOT READY for a paying client.**
+> **Original verdict (2026-11-16): 🔴 NOT READY for a paying client.**
 > The app builds, runs, and the happy paths work — but it has **session-forgery via a hardcoded secret**, **broken authorization** (a read-only user can write), **no tenant isolation on writes**, a **critical Next.js CVE**, and a **data model that cannot survive a real deployment** (SQLite + a build step that wipes the DB). None of these are acceptable for production. They are all fixable; see the roadmap.
+
+---
+
+## ✅ Final status (updated 2026-11-17)
+
+> **Current verdict: 🟢 READY for a controlled launch** — pending one live-host smoke pass on Hostinger.
+
+All P0 blockers and the high/medium items from the roadmap have been fixed, verified, and pushed to `main`. The data layer was migrated to **MySQL** and the full stack was run **end-to-end against a real MySQL database** (local MySQL 9.6) in production mode.
+
+**Resolved — by phase:**
+
+| Phase | What was fixed | Original findings |
+|---|---|---|
+| 0 — Blockers | Require `AUTH_SECRET` (no fallback); upgrade Next.js 16.4 (CVE); non-destructive build + separate `migrate` step; guard + tenant-scope every write action | C-1, C-2, C-3, H-1, H-2, H-3 |
+| MySQL | Prisma → MySQL; `@db.Text` + tenant/FK indexes; baseline migration; drop SQLite hack. Deploy config takes discrete `DB_NAME`/`DB_USER`/… (Hostinger shape) | M-1, §7 |
+| 1 — Resilience | No mock-data fallback in production; role-gated Settings/Family Studio UI; error/not-found boundaries; `GET /api/health` | H-4, H-5, M-7, M-8 |
+| 2 — Tests/Ops | Vitest + CI; in-memory rate limiting on login/register; audit log (`Activity`) on key mutations; honest dashboard KPIs | M-2, L-1 |
+| 3 — Correctness/UX | Deterministic RFQ pricing (no `Math.random`); modal a11y (focus-trap/ESC/ARIA) + icon labels; SEO (`robots`/`sitemap`/metadata) | M-6, L-3, L-4 |
+| 4 — Hardening | Security headers + CSP (clickjacking/CSP); zod input validation on server actions; structured logger (Sentry-ready hook) | CSP/headers, validation |
+| 5 — E2E | Playwright E2E (13 specs) + CI e2e job, against the mock-data dev server | E2E coverage |
+
+**Live-MySQL verification (2026-11-17, production mode, real DB):**
+- `prisma migrate deploy` applied cleanly (29 tables, utf8mb4); seed loaded demo data.
+- **Every route returned 200**, including the DB-only routes (settings, procurement, manufacturing, testing, quotations, compliance, configurator, estimation, customer detail, family studio).
+- Full workflow written and verified in SQL: login → create project → advance stage → quotation → work orders → test plan → record results → communication.
+- **Business logic** holds: test certificate issues only when all tests pass and is revoked on any failure.
+- **RBAC** holds on the real DB: viewer and unauthenticated writes blocked; no state changed.
+- **No application bugs found.**
+
+**Quality gate (all green):** 35 unit tests · 13 Playwright E2E · `tsc` · `next build`.
+
+**Remaining before/after go-live (non-blocking fast-follows):**
+- One **live Hostinger smoke pass** (provision MySQL there, set `DB_*` + `AUTH_SECRET`, `npm run db:migrate`, repeat the workflow) — the last gate.
+- **Prisma CLI** upgrade to clear its 3 remaining `npm audit` highs (breaking major — do it with a DB to verify).
+- Wire the logger's `captureException` hook to a real tracker (e.g. **Sentry**).
+- **ESLint in CI** (currently deferred — `eslint-config-next@16` + `eslint@9.39` FlatCompat incompatibility).
+- **Backups / disaster recovery** and a basic load check.
+
+The findings below are the **original** audit, kept as the historical record. Each P0/P1 is resolved as noted in the table above.
 
 ---
 

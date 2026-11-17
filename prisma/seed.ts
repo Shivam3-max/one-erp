@@ -38,6 +38,14 @@ async function main() {
   // USERS now includes the Guest Viewer (U-10); access levels come from the shared map.
   await prisma.user.createMany({ data: USERS.map((u) => ({ id: u.id, tenantId: T, name: u.name, initials: u.initials, role: u.role, department: u.department, email: u.email, passwordHash, accessLevel: MOCK_ACCESS_LEVEL[u.id] ?? "member" })) });
 
+  // Two dedicated accounts for client UAT — one full-access, one read-only.
+  // Password: candron123 (same as the demo set). See SOP.md; disable or rotate
+  // these before real production use.
+  await prisma.user.createMany({ data: [
+    { id: "U-CLIENT-ADMIN", tenantId: T, name: "Client Admin", initials: "CA", role: "Administrator", department: "management", email: "client.admin@candron.in", passwordHash, accessLevel: "admin" },
+    { id: "U-CLIENT-VIEWER", tenantId: T, name: "Client Reviewer", initials: "CR", role: "Reviewer", department: "sales", email: "client.viewer@candron.in", passwordHash, accessLevel: "viewer" },
+  ] });
+
   // customers + contacts
   for (const c of CUSTOMERS) {
     await prisma.customer.create({

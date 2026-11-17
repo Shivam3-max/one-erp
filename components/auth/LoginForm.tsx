@@ -8,6 +8,8 @@ const DEMO = [
   { label: "Director · admin", email: "meera@candron.in" },
   { label: "Commercial · manager", email: "vikram@candron.in" },
   { label: "Viewer · read-only", email: "viewer@candron.in" },
+  { label: "Client Admin", email: "client.admin@candron.in" },
+  { label: "Client Reviewer · read-only", email: "client.viewer@candron.in" },
 ];
 
 export function LoginForm() {
