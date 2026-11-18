@@ -1,23 +1,40 @@
 import Link from "next/link";
 import {
   Wallet, TrendingUp, FolderKanban, Percent, TriangleAlert,
-  ArrowRight, GitBranch, Clock,
+  GitBranch, Clock, PieChart, Activity as ActivityIcon, Rocket, Settings as SettingsIcon, Building2,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Stat } from "@/components/ui/Stat";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Badge, Mono } from "@/components/ui/Badge";
 import { Avatar } from "@/components/ui/Avatar";
+import { Donut } from "@/components/ui/Donut";
 import {
   getPortfolioMetrics, getStageDistribution, getProjects,
   getStaleArtifacts, getActivityFeed, getCustomerMap, getUserMap, getTenant,
 } from "@/lib/data";
 import { getCurrentUser } from "@/lib/auth";
+import { stageIndex } from "@/lib/lifecycle";
 import { money, shortDate, relDate, fiscalQuarter } from "@/lib/format";
 import { healthTone, healthLabel } from "@/lib/status";
 import { ACCESS_LABEL } from "@/lib/permissions";
 
 const inr = (amount: number) => money({ amount, currency: "INR" });
+
+const HEALTH = [
+  { key: "on-track", label: "On track", color: "#1f9d6b" },
+  { key: "at-risk", label: "At risk", color: "#c8891f" },
+  { key: "critical", label: "Critical", color: "#d04545" },
+  { key: "closed", label: "Closed", color: "#8891a2" },
+];
+// Lifecycle phases, light → dark as a project progresses (ordered → sequential blue).
+const PHASES = [
+  { label: "Acquire", from: 0, to: 2, color: "#c4d2f9" },
+  { label: "Engineer", from: 3, to: 6, color: "#8fabf3" },
+  { label: "Contract", from: 7, to: 9, color: "#5a80ee" },
+  { label: "Deliver", from: 10, to: 16, color: "#3059dd" },
+  { label: "Support", from: 17, to: 21, color: "#1c3ea8" },
+];
 
 export default async function OverviewPage() {
   const [m, stageDistAll, projects, stale, feed, customerMap, userMap, tenant, user] = await Promise.all([
@@ -30,6 +47,14 @@ export default async function OverviewPage() {
   const attention = projects
     .filter((p) => p.health === "at-risk" || p.health === "critical")
     .sort((a, b) => b.value.amount - a.value.amount);
+
+  const healthSegments = HEALTH.map((h) => ({ label: h.label, color: h.color, value: projects.filter((p) => p.health === h.key).length }));
+  const phaseSegments = PHASES.map((ph) => ({
+    label: ph.label, color: ph.color,
+    value: projects.filter((p) => { const i = stageIndex(p.currentStage); return i >= ph.from && i <= ph.to; }).reduce((s, p) => s + p.value.amount, 0),
+  }));
+  const portfolioValue = projects.reduce((s, p) => s + p.value.amount, 0);
+  const hasProjects = projects.length > 0;
 
   return (
     <>
@@ -58,6 +83,61 @@ export default async function OverviewPage() {
           sub={`${m.atRiskCount} at-risk · ${m.staleCount} stale`} />
       </div>
 
+      {/* First-run / empty workspace */}
+      {!hasProjects && (
+        <Card className="mt-4">
+          <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-soft text-brand">
+              <Rocket className="h-7 w-7" />
+            </span>
+            <div>
+              <h2 className="text-[18px] font-bold text-ink">Your workspace is ready</h2>
+              <p className="mx-auto mt-1 max-w-md text-[13px] text-ink-3">
+                There are no projects yet. Set up your workspace, add your customers, then create your first project — every inquiry becomes a project on the lifecycle spine.
+              </p>
+            </div>
+            <div className="mt-1 grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-3">
+              <Link href="/settings" className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-4 py-4 text-center transition-colors hover:border-brand-line hover:bg-brand-soft/50">
+                <SettingsIcon className="h-5 w-5 text-brand" />
+                <span className="text-[12.5px] font-semibold text-ink">1 · Configure</span>
+                <span className="text-[11px] text-ink-4">Rate card, terms, families</span>
+              </Link>
+              <Link href="/customers" className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-4 py-4 text-center transition-colors hover:border-brand-line hover:bg-brand-soft/50">
+                <Building2 className="h-5 w-5 text-brand" />
+                <span className="text-[12.5px] font-semibold text-ink">2 · Add customers</span>
+                <span className="text-[11px] text-ink-4">Contacts & terms</span>
+              </Link>
+              <Link href="/projects" className="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface-2 px-4 py-4 text-center transition-colors hover:border-brand-line hover:bg-brand-soft/50">
+                <FolderKanban className="h-5 w-5 text-brand" />
+                <span className="text-[12.5px] font-semibold text-ink">3 · New project</span>
+                <span className="text-[11px] text-ink-4">Use ＋ New Project, top right</span>
+              </Link>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Charts */}
+      {hasProjects && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader title="Order book by phase" subtitle="Where the portfolio value sits"
+              action={<PieChart className="h-4 w-4 text-ink-4" />} />
+            <div className="px-5 pb-5 pt-1">
+              <Donut segments={phaseSegments} centerValue={inr(portfolioValue)} centerLabel="Portfolio" formatValue={inr} />
+            </div>
+          </Card>
+          <Card>
+            <CardHeader title="Projects by health" subtitle="Delivery risk across the portfolio"
+              action={<ActivityIcon className="h-4 w-4 text-ink-4" />} />
+            <div className="px-5 pb-5 pt-1">
+              <Donut segments={healthSegments} centerValue={String(projects.length)} centerLabel="Projects" />
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {hasProjects && (
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Left column */}
         <div className="space-y-4 lg:col-span-2">
@@ -86,6 +166,9 @@ export default async function OverviewPage() {
                   </div>
                 </div>
               ))}
+              {stageDist.length === 0 && (
+                <div className="py-8 text-center text-[12.5px] text-ink-4">No projects in the pipeline yet.</div>
+              )}
             </div>
           </Card>
 
@@ -121,6 +204,9 @@ export default async function OverviewPage() {
                   </Link>
                 );
               })}
+              {attention.length === 0 && (
+                <div className="px-5 py-8 text-center text-[12.5px] text-ink-4">Nothing at risk — all projects on track.</div>
+              )}
             </div>
           </Card>
         </div>
@@ -179,10 +265,14 @@ export default async function OverviewPage() {
                   </div>
                 );
               })}
+              {feed.length === 0 && (
+                <div className="py-6 text-center text-[12.5px] text-ink-4">No recent activity.</div>
+              )}
             </div>
           </Card>
         </div>
       </div>
+      )}
     </>
   );
 }

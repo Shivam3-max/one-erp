@@ -20,9 +20,11 @@ const T = TENANT.id;
 
 // Set RESET_DB=1 (or pass --reset) to wipe everything and reseed from scratch.
 // Default behaviour is idempotent ("firstOrCreate"): it ensures the tenant and
-// users exist on every run without touching existing data, and seeds the demo
-// content only when the workspace is still empty — safe to run on every deploy.
+// users exist on every run without touching existing data — safe to run on every
+// deploy. Demo content (customers, projects, etc.) is NOT seeded by default; it
+// is only loaded for a local demo via `--demo` / SEED_DEMO=1 (or on --reset).
 const RESET = process.env.RESET_DB === "1" || process.argv.includes("--reset");
+const SEED_DEMO = RESET || process.env.SEED_DEMO === "1" || process.argv.includes("--demo");
 
 async function main() {
   if (RESET) {
@@ -63,14 +65,19 @@ async function main() {
   }
   console.log(`Users ensured (${created} created, ${seedUsers.length - created} already present).`);
 
-  /* ---------- Demo content: seed only when the workspace is still empty ---------- */
+  /* ---------- Demo content (opt-in only; never in a default/production seed) ---------- */
 
+  if (!SEED_DEMO) {
+    console.log("Production seed — tenant + users only (no demo content).");
+    await report();
+    return;
+  }
   if ((await prisma.project.count({ where: { tenantId: T } })) > 0) {
     console.log("Demo content already present — skipping.");
     await report();
     return;
   }
-  console.log("Empty workspace — seeding demo content…");
+  console.log("Seeding demo content…");
 
   // customers + contacts
   for (const c of CUSTOMERS) {

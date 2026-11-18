@@ -11,6 +11,7 @@
     "db:migrate": "node scripts/with-db-url.mjs prisma migrate deploy",
     "db:migrate:dev": "node scripts/with-db-url.mjs prisma migrate dev",
     "db:seed": "node scripts/with-db-url.mjs tsx prisma/seed.ts",
+    "db:seed:demo": "node scripts/with-db-url.mjs tsx prisma/seed.ts --demo",
     "db:reset": "node scripts/with-db-url.mjs tsx prisma/seed.ts --reset",
     "postinstall": "prisma generate",
     "build": "node scripts/deploy-db.mjs && next build --webpack",
