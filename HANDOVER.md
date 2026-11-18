@@ -280,8 +280,10 @@ The application is a Node.js (Next.js) app backed by **MySQL**. Full details are
   `NODE_ENV=production`.
 - **Migrations run automatically** on every boot (`server.mjs` applies pending
   Prisma migrations before the server starts).
-- **Seed once** (`npm run db:seed`) to load demo data + the client test users.
-  ⚠️ The seed **replaces all data** — never run it on a database with real data.
+- **Seeding is automatic and idempotent** — on every boot `server.mjs` ensures the
+  tenant and users exist and seeds demo content when the workspace is empty. It
+  never overwrites real data. (A destructive full reseed, demo only, is
+  `npm run db:reset`.)
 - **Health check:** `GET /api/health` → `{"status":"ok","db":"up"}`.
 - **Backups:** schedule regular MySQL backups (hPanel or `mysqldump`). Test a restore.
 - **Secrets:** keep `AUTH_SECRET` stable (changing it signs everyone out) and private.

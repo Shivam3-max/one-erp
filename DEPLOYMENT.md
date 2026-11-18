@@ -81,16 +81,19 @@ single JS **startup file**. This project builds to Next's standalone server and 
      to run migrations yourself.)
    - **Environment variables:** `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`,
      `DB_PASSWORD`, `AUTH_SECRET`, and `NODE_ENV=production`.
-4. **Install, build, seed** — open the app's terminal (hPanel gives one) and run:
+4. **Install & build** — open the app's terminal (hPanel gives one) and run:
    ```bash
    npm ci
    npm run build           # builds + assembles .next/standalone (postbuild)
-   npm run db:seed         # first time only — loads demo data + the UAT users
    ```
-   You do **not** need to run `db:migrate` by hand — `server.mjs` applies pending
-   migrations automatically each time the app boots.
-5. **Restart** the Node app in hPanel. On boot `server.mjs` runs `prisma migrate
-   deploy`, then serves on the port Passenger assigns (the server reads `PORT`).
+   You do **not** need to run `db:migrate` or `db:seed` by hand. On every boot
+   `server.mjs` applies pending migrations and runs the **idempotent seed**, which
+   ensures the tenant and users exist and loads demo content when the workspace is
+   empty — safe to run on every deploy, never clobbers real data.
+5. **Restart** the Node app in hPanel. On boot `server.mjs` runs migrations, seeds,
+   then serves on the port Passenger assigns (the server reads `PORT`).
+
+> To wipe and reseed from scratch (destructive — demo only): `npm run db:reset`.
 6. **Verify:** open `/api/health` → `{"status":"ok","db":"up"}`, then walk `SOP.md`.
 
 > If hPanel can't run `npm run build` (limited terminal), build locally with the
@@ -110,13 +113,13 @@ sudo npm i -g pm2
 git clone <your-repo> /var/www/oneerp && cd /var/www/oneerp
 cp .env.example .env            # then edit with real DATABASE_URL + AUTH_SECRET
 npm ci                          # runs `prisma generate` via postinstall
-npm run db:migrate              # prisma migrate deploy — creates the schema
-# optional, first tenant only — DESTRUCTIVE, wipes all rows, never re-run on prod:
-# npm run db:seed
-npm run build                   # next build (does NOT touch the database)
-pm2 start "npm run start" --name oneerp   # serves on :3550
+npm run build                   # next build + assembles .next/standalone
+pm2 start "npm run start:prod" --name oneerp   # migrates + seeds (idempotent) on boot, then serves
 pm2 save && pm2 startup
 ```
+
+`start:prod` runs `server.mjs`, which applies pending migrations and the idempotent
+seed on every boot. For a destructive full reseed (demo only): `npm run db:reset`.
 
 Then put Nginx in front of `:3550` and add SSL:
 

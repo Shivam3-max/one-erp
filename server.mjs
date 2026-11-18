@@ -30,6 +30,18 @@ try {
   process.exit(1);
 }
 
+// Idempotent seed: ensures the tenant + users exist and seeds demo content on an
+// empty workspace. Safe to run every boot; best-effort so it never blocks start.
+try {
+  console.log("[startup] ensuring seed data (prisma/seed.ts)…");
+  execSync("npx --no-install tsx prisma/seed.ts", {
+    stdio: "inherit",
+    env: { ...process.env, DATABASE_URL: url },
+  });
+} catch (err) {
+  console.error("[startup] seed step failed (continuing to start the server).", err?.message ?? err);
+}
+
 const standalone = "./.next/standalone/server.js";
 if (!existsSync(standalone)) {
   console.error(

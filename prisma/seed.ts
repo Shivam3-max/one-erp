@@ -18,33 +18,59 @@ import { stageIndex } from "../lib/lifecycle";
 const prisma = new PrismaClient();
 const T = TENANT.id;
 
-async function main() {
-  // clean (child → parent)
-  await prisma.$transaction([
-    prisma.testRecord.deleteMany(), prisma.testUnit.deleteMany(),
-    prisma.quoteApproval.deleteMany(), prisma.quoteRevision.deleteMany(), prisma.quotation.deleteMany(),
-    prisma.artifactLink.deleteMany(), prisma.revision.deleteMany(), prisma.artifact.deleteMany(),
-    prisma.projectStage.deleteMany(), prisma.project.deleteMany(),
-    prisma.materialReq.deleteMany(), prisma.workOrder.deleteMany(), prisma.complianceItem.deleteMany(),
-    prisma.communication.deleteMany(), prisma.contact.deleteMany(), prisma.opportunity.deleteMany(),
-    prisma.activity.deleteMany(), prisma.vendor.deleteMany(), prisma.standardRef.deleteMany(),
-    prisma.workflowConfig.deleteMany(), prisma.rateCard.deleteMany(), prisma.productFamily.deleteMany(),
-    prisma.customer.deleteMany(), prisma.user.deleteMany(), prisma.tenant.deleteMany(),
-  ]);
+// Set RESET_DB=1 (or pass --reset) to wipe everything and reseed from scratch.
+// Default behaviour is idempotent ("firstOrCreate"): it ensures the tenant and
+// users exist on every run without touching existing data, and seeds the demo
+// content only when the workspace is still empty — safe to run on every deploy.
+const RESET = process.env.RESET_DB === "1" || process.argv.includes("--reset");
 
-  await prisma.tenant.create({ data: { id: TENANT.id, name: TENANT.name, code: TENANT.code, logoText: TENANT.logoText, primaryCurrency: TENANT.primaryCurrency, country: TENANT.country } });
+async function main() {
+  if (RESET) {
+    // clean (child → parent)
+    await prisma.$transaction([
+      prisma.testRecord.deleteMany(), prisma.testUnit.deleteMany(),
+      prisma.quoteApproval.deleteMany(), prisma.quoteRevision.deleteMany(), prisma.quotation.deleteMany(),
+      prisma.artifactLink.deleteMany(), prisma.revision.deleteMany(), prisma.artifact.deleteMany(),
+      prisma.projectStage.deleteMany(), prisma.project.deleteMany(),
+      prisma.materialReq.deleteMany(), prisma.workOrder.deleteMany(), prisma.complianceItem.deleteMany(),
+      prisma.communication.deleteMany(), prisma.contact.deleteMany(), prisma.opportunity.deleteMany(),
+      prisma.activity.deleteMany(), prisma.vendor.deleteMany(), prisma.standardRef.deleteMany(),
+      prisma.workflowConfig.deleteMany(), prisma.rateCard.deleteMany(), prisma.productFamily.deleteMany(),
+      prisma.customer.deleteMany(), prisma.user.deleteMany(), prisma.tenant.deleteMany(),
+    ]);
+    console.log("RESET_DB: wiped all data.");
+  }
+
+  /* ---------- Always ensure the tenant + users (idempotent / firstOrCreate) ---------- */
+
+  if (!(await prisma.tenant.findUnique({ where: { id: TENANT.id } }))) {
+    await prisma.tenant.create({ data: { id: TENANT.id, name: TENANT.name, code: TENANT.code, logoText: TENANT.logoText, primaryCurrency: TENANT.primaryCurrency, country: TENANT.country } });
+  }
 
   const passwordHash = await bcrypt.hash("candron123", 10);
-  // USERS now includes the Guest Viewer (U-10); access levels come from the shared map.
-  await prisma.user.createMany({ data: USERS.map((u) => ({ id: u.id, tenantId: T, name: u.name, initials: u.initials, role: u.role, department: u.department, email: u.email, passwordHash, accessLevel: MOCK_ACCESS_LEVEL[u.id] ?? "member" })) });
+  const seedUsers = [
+    ...USERS.map((u) => ({ id: u.id, tenantId: T, name: u.name, initials: u.initials, role: u.role, department: u.department, email: u.email, accessLevel: MOCK_ACCESS_LEVEL[u.id] ?? "member" })),
+    // Two dedicated accounts for client UAT — one full-access, one read-only.
+    { id: "U-CLIENT-ADMIN", tenantId: T, name: "Client Admin", initials: "CA", role: "Administrator", department: "management", email: "client.admin@candron.in", accessLevel: "admin" },
+    { id: "U-CLIENT-VIEWER", tenantId: T, name: "Client Reviewer", initials: "CR", role: "Reviewer", department: "sales", email: "client.viewer@candron.in", accessLevel: "viewer" },
+  ];
+  let created = 0;
+  for (const u of seedUsers) {
+    // Create only if neither the id nor the email already exists — never overwrite
+    // a user whose details or password the client may have changed.
+    const exists = await prisma.user.findFirst({ where: { OR: [{ id: u.id }, { email: u.email }] }, select: { id: true } });
+    if (!exists) { await prisma.user.create({ data: { ...u, passwordHash } }); created++; }
+  }
+  console.log(`Users ensured (${created} created, ${seedUsers.length - created} already present).`);
 
-  // Two dedicated accounts for client UAT — one full-access, one read-only.
-  // Password: candron123 (same as the demo set). See SOP.md; disable or rotate
-  // these before real production use.
-  await prisma.user.createMany({ data: [
-    { id: "U-CLIENT-ADMIN", tenantId: T, name: "Client Admin", initials: "CA", role: "Administrator", department: "management", email: "client.admin@candron.in", passwordHash, accessLevel: "admin" },
-    { id: "U-CLIENT-VIEWER", tenantId: T, name: "Client Reviewer", initials: "CR", role: "Reviewer", department: "sales", email: "client.viewer@candron.in", passwordHash, accessLevel: "viewer" },
-  ] });
+  /* ---------- Demo content: seed only when the workspace is still empty ---------- */
+
+  if ((await prisma.project.count({ where: { tenantId: T } })) > 0) {
+    console.log("Demo content already present — skipping.");
+    await report();
+    return;
+  }
+  console.log("Empty workspace — seeding demo content…");
 
   // customers + contacts
   for (const c of CUSTOMERS) {
@@ -155,8 +181,12 @@ async function main() {
     });
   }
 
+  await report();
+}
+
+async function report() {
   const counts = {
-    projects: await prisma.project.count(), artifacts: await prisma.artifact.count(),
+    users: await prisma.user.count(), projects: await prisma.project.count(), artifacts: await prisma.artifact.count(),
     customers: await prisma.customer.count(), quotations: await prisma.quotation.count(),
     opportunities: await prisma.opportunity.count(), workOrders: await prisma.workOrder.count(),
     tests: await prisma.testRecord.count(), compliance: await prisma.complianceItem.count(),

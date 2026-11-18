@@ -37,17 +37,17 @@ role-based access, and that nothing errors or leaks across tenants.
    AUTH_SECRET="…"            # openssl rand -base64 48
    ```
    (A full `DATABASE_URL` may be used instead; it takes precedence.)
-3. **Schema + data:**
+3. **Build & run:**
    ```bash
    npm ci
-   npm run db:migrate     # creates the schema
-   npm run db:seed        # loads demo data + the two client test users
-   npm run build && npm run start
+   npm run build
+   npm run start:prod     # migrations + idempotent seed run automatically on boot
    ```
+   Migrations and the seed (tenant, users + demo data when empty) run on every
+   boot — no manual step. The two client test users are created automatically.
 4. Confirm health: open `/api/health` → expect `{"status":"ok","db":"up"}`.
 
-> ⚠️ `npm run db:seed` **replaces all data** with the demo set. Only run it on a
-> test database, never against real client data.
+> To wipe and reseed from scratch (destructive — demo only): `npm run db:reset`.
 
 ## 3. Test script
 
