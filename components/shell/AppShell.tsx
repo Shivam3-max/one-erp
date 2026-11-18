@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 import { getCurrentUser } from "@/lib/auth";
 import { getCustomers, getTenant } from "@/lib/data";
+import type { Tenant, Customer } from "@/lib/types";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = (await headers()).get("x-pathname") || "";
@@ -15,7 +16,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [tenant, customers] = await Promise.all([getTenant(), getCustomers()]);
+  // Load chrome data defensively — a not-yet-seeded or unreachable database must
+  // not take down the whole app shell; render with safe defaults instead.
+  let tenant: Tenant | null = null;
+  let customers: Customer[] = [];
+  try {
+    [tenant, customers] = await Promise.all([getTenant(), getCustomers()]);
+  } catch {
+    tenant = null;
+    customers = [];
+  }
   const brand = (tenant as (typeof tenant & { brandColor?: string }) | null)?.brandColor || "#2050e0";
 
   return (
