@@ -12,7 +12,7 @@
     "db:migrate:dev": "node scripts/with-db-url.mjs prisma migrate dev",
     "db:seed": "node scripts/with-db-url.mjs tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "build": "next build",
+    "build": "next build --webpack",
     "postbuild": "node scripts/standalone-assets.mjs",
     "start": "next start -p 3550",
     "start:standalone": "node .next/standalone/server.js",
