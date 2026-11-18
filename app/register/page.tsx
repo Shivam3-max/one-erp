@@ -9,25 +9,30 @@ export const metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-4 py-10">
-      <div className="pointer-events-none absolute inset-0 bg-grid bg-grid-fade opacity-60" />
-      <div className="relative w-full max-w-sm">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/candron-logo.png" alt="CANDRON Energy Inc." className="h-9 w-auto" />
-          <span className="font-mono text-[11px] font-semibold text-brand">OneERP</span>
-        </div>
+    <div className="flex min-h-screen flex-col bg-canvas">
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full max-w-[400px]">
+          <div className="mb-7 flex items-center justify-center gap-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/candron-logo.png" alt="CANDRON Energy Inc." className="h-8 w-auto" />
+            <span className="font-mono text-[10.5px] font-semibold text-ink-4">OneERP</span>
+          </div>
 
-        <div className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-pop)]">
-          <h1 className="text-[18px] font-bold tracking-tight text-ink">Create your workspace</h1>
-          <p className="mb-4 mt-0.5 text-[12.5px] text-ink-3">Onboard your company as a new tenant.</p>
-          <RegisterForm />
-        </div>
+          <div className="rounded-xl border border-line bg-surface px-6 py-7 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_12px_28px_-16px_rgba(16,24,40,0.18)]">
+            <h1 className="text-[17px] font-bold tracking-tight text-ink">Create your workspace</h1>
+            <p className="mb-5 mt-1 text-[12.5px] text-ink-3">Onboard your company as a new tenant.</p>
+            <RegisterForm />
+          </div>
 
-        <p className="mt-4 text-center text-[12px] text-ink-4">
-          Already have an account? <Link href="/login" className="font-semibold text-brand hover:underline">Sign in →</Link>
-        </p>
-      </div>
+          <p className="mt-5 text-center text-[12px] text-ink-4">
+            Already have an account? <Link href="/login" className="font-semibold text-brand hover:underline">Sign in</Link>
+          </p>
+        </div>
+      </main>
+
+      <footer className="px-4 py-5 text-center text-[11px] text-ink-4">
+        © {new Date().getFullYear()} CANDRON Electricals Pvt. Ltd. · Project Lifecycle Platform
+      </footer>
     </div>
   );
 }
