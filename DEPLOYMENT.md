@@ -151,8 +151,7 @@ before/at first boot. The image uses Next's standalone output.
 
 ## 6. Security / ops notes
 
-- `middleware.ts` is the auth wall (Next 16 is migrating this convention to
-  `proxy.ts`; `middleware.ts` still works).
+- `proxy.ts` is the auth wall (the Next 16 convention; formerly `middleware.ts`).
 - All application routes are dynamic (they read the session cookie) — expected for an
   authenticated app; nothing is statically cached per user.
 - Every mutating server action now enforces `requireUser()` + a role check + tenant
