@@ -13,7 +13,7 @@
     "db:seed": "node scripts/with-db-url.mjs tsx prisma/seed.ts",
     "db:reset": "node scripts/with-db-url.mjs tsx prisma/seed.ts --reset",
     "postinstall": "prisma generate",
-    "build": "next build --webpack",
+    "build": "node scripts/deploy-db.mjs && next build --webpack",
     "postbuild": "node scripts/standalone-assets.mjs",
     "start": "next start -p 3550",
     "start:standalone": "node .next/standalone/server.js",
