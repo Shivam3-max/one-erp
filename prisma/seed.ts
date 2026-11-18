@@ -68,7 +68,8 @@ async function main() {
   /* ---------- Demo content (opt-in only; never in a default/production seed) ---------- */
 
   if (!SEED_DEMO) {
-    console.log("Production seed — tenant + users only (no demo content).");
+    console.log("Production seed — tenant + users only; removing any demo content…");
+    await pruneDemo();
     await report();
     return;
   }
@@ -189,6 +190,41 @@ async function main() {
   }
 
   await report();
+}
+
+/**
+ * Remove the demo/sample content this seed can create, by its known fixed IDs.
+ * Real data the client enters has different IDs, so it is never touched. Runs on
+ * every production (non-demo) seed so a deploy leaves a clean workspace.
+ */
+async function pruneDemo() {
+  const projectIds = PROJECTS.map((p) => p.id);
+  const customerIds = CUSTOMERS.map((c) => c.id);
+  const oppIds = OPPORTUNITIES.map((o) => o.id);
+  const vendorIds = VENDORS.map((v) => v.id);
+  const familyIds = [...FAMILIES.map((f) => f.id), "cast-resin-dry-type"];
+
+  // children of demo projects (tables that reference projectId without a cascade)
+  await prisma.testRecord.deleteMany({ where: { unit: { projectId: { in: projectIds } } } });
+  await prisma.testUnit.deleteMany({ where: { projectId: { in: projectIds } } });
+  await prisma.quotation.deleteMany({ where: { projectId: { in: projectIds } } }); // cascades revisions + approvals
+  await prisma.materialReq.deleteMany({ where: { projectId: { in: projectIds } } });
+  await prisma.workOrder.deleteMany({ where: { projectId: { in: projectIds } } });
+  await prisma.complianceItem.deleteMany({ where: { projectId: { in: projectIds } } });
+  await prisma.configuration.deleteMany({ where: { projectId: { in: projectIds } } });
+  await prisma.activity.deleteMany({ where: { projectId: { in: projectIds } } });
+  await prisma.project.deleteMany({ where: { id: { in: projectIds } } }); // cascades stages + artifacts
+
+  // demo customers + their communications (contacts cascade with the customer)
+  await prisma.communication.deleteMany({ where: { customerId: { in: customerIds } } });
+  await prisma.customer.deleteMany({ where: { id: { in: customerIds } } });
+
+  await prisma.opportunity.deleteMany({ where: { id: { in: oppIds } } });
+  await prisma.vendor.deleteMany({ where: { id: { in: vendorIds } } });
+  await prisma.productFamily.deleteMany({ where: { id: { in: familyIds } } });
+
+  const left = await prisma.project.count();
+  console.log(`Demo content pruned. Projects remaining: ${left}.`);
 }
 
 async function report() {
