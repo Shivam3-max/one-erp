@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Zap, GitBranch, SlidersHorizontal, ShieldCheck } from "lucide-react";
+import { GitBranch, SlidersHorizontal, ShieldCheck } from "lucide-react";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata = {
@@ -16,13 +16,10 @@ const HIGHLIGHTS = [
 
 function Logo({ className = "" }: { className?: string }) {
   return (
-    <div className={`flex items-center gap-2.5 ${className}`}>
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-white shadow-[var(--shadow-rail)]">
-        <Zap className="h-5 w-5" strokeWidth={2.5} fill="currentColor" />
-      </div>
-      <div className="text-[20px] font-extrabold tracking-tight text-ink">
-        CANDRON<span className="ml-1.5 align-top font-mono text-[11px] font-semibold text-brand">OneERP</span>
-      </div>
+    <div className={`flex items-center gap-2 ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/candron-logo.png" alt="CANDRON Energy Inc." className="h-9 w-auto" />
+      <span className="font-mono text-[11px] font-semibold text-brand">OneERP</span>
     </div>
   );
 }
@@ -41,13 +38,12 @@ export default function LoginPage() {
           style={{ background: "radial-gradient(circle, rgba(255,255,255,0.5), transparent 70%)" }}
         />
 
-        <div className="relative flex items-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
-            <Zap className="h-5 w-5" strokeWidth={2.5} fill="currentColor" />
-          </div>
-          <div className="text-[20px] font-extrabold tracking-tight">
-            CANDRON<span className="ml-1.5 align-top font-mono text-[11px] font-semibold text-white/70">OneERP</span>
-          </div>
+        <div className="relative flex items-center gap-3">
+          <span className="inline-flex items-center rounded-xl bg-white px-3.5 py-2 shadow-[var(--shadow-rail)]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/candron-logo.png" alt="CANDRON Energy Inc." className="h-6 w-auto" />
+          </span>
+          <span className="font-mono text-[11px] font-semibold text-white/70">OneERP</span>
         </div>
 
         <div className="relative max-w-md">

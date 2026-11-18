@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV } from "./nav";
 import { cn } from "@/lib/cn";
-import { Zap } from "lucide-react";
 
 export function Sidebar({ logoText, tenantName }: { logoText: string; tenantName: string }) {
   const pathname = usePathname();
@@ -12,18 +11,11 @@ export function Sidebar({ logoText, tenantName }: { logoText: string; tenantName
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] flex-col border-r border-line bg-surface lg:flex print:hidden">
       {/* Brand */}
-      <div className="flex h-14 items-center gap-2.5 border-b border-line px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand text-white shadow-[var(--shadow-rail)]">
-          <Zap className="h-[18px] w-[18px]" strokeWidth={2.5} fill="currentColor" />
-        </div>
-        <div className="leading-none">
-          <div className="text-[15px] font-extrabold tracking-tight text-ink">
-            {logoText}
-            <span className="ml-1 font-mono text-[10px] font-semibold text-brand align-top">OneERP</span>
-          </div>
-          <div className="mt-1 text-[10px] font-medium text-ink-4">Project Lifecycle Platform</div>
-        </div>
-      </div>
+      <Link href="/" className="flex h-14 items-center gap-2.5 border-b border-line px-5">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/candron-logo.png" alt={tenantName || logoText || "CANDRON Energy Inc."} className="h-7 w-auto" />
+        <span className="font-mono text-[10px] font-semibold text-brand">OneERP</span>
+      </Link>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
