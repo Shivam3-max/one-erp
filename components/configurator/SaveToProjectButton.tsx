@@ -59,7 +59,7 @@ export function SaveToProjectButton({ projects, disabled, payload }: { projects:
   }
 
   return (
-    <button onClick={() => setOpen(true)} disabled={disabled}
+    <button onClick={() => setOpen(true)} disabled={disabled || projects.length === 0} title={projects.length === 0 ? "Create a project before saving a configuration" : undefined}
       className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand px-3 py-2.5 text-[13px] font-semibold text-white shadow-[var(--shadow-rail)] transition-colors hover:bg-brand-ink disabled:cursor-not-allowed disabled:opacity-40")}>
       <Save className="h-4 w-4" /> Save to project
     </button>

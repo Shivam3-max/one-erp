@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, MapPin, FolderKanban, ArrowRight } from "lucide-react";
+import { Search, MapPin, Building2, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { money } from "@/lib/format";
 import { Badge } from "@/components/ui/Badge";
@@ -79,6 +79,15 @@ export function CustomersClient({ rows }: { rows: CustomerRow[] }) {
             </div>
           </Link>
         ))}
+        {filtered.length === 0 && (
+          <div className="col-span-full rounded-[var(--radius-lg)] border border-dashed border-line bg-surface px-6 py-14 text-center">
+            <Building2 className="mx-auto h-8 w-8 text-ink-4" />
+            <div className="mt-3 text-[14px] font-semibold text-ink">{rows.length === 0 ? "No customers yet" : "No customers match your filters"}</div>
+            <p className="mx-auto mt-1 max-w-md text-[12.5px] text-ink-3">
+              {rows.length === 0 ? "Add your first customer using the Add customer button above, then create a project for that company." : "Try a different customer type or search term."}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

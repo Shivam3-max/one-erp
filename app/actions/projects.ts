@@ -31,6 +31,11 @@ export async function createProject(rawInput: {
   if (!parsed.ok) return { error: parsed.error };
   const input = parsed.data;
   const tId = user.tenantId;
+  const customer = await prisma.customer.findFirst({
+    where: { id: input.customerId, tenantId: tId },
+    select: { id: true },
+  });
+  if (!customer) return { error: "Customer not found or not available in this workspace." };
   const existing = await prisma.project.findMany({ where: { id: { startsWith: "PRJ-2026-" } }, select: { id: true } });
   const maxN = existing.reduce((m: number, p: { id: string }) => {
     const n = parseInt(p.id.split("-").pop() || "0", 10);

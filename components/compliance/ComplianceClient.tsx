@@ -31,6 +31,16 @@ export function ComplianceClient({ projects, data, users }: { projects: { id: st
   const filtered = filter === "all" ? rows : rows.filter((r) => r.status === filter);
   const compliancePct = rows.length ? Math.round(((counts.comply ?? 0) / rows.length) * 100) : 0;
 
+  if (projects.length === 0) {
+    return (
+      <div className="rounded-[var(--radius-lg)] border border-dashed border-line bg-surface px-6 py-14 text-center">
+        <MessageSquareText className="mx-auto h-8 w-8 text-ink-4" />
+        <div className="mt-3 text-[14px] font-semibold text-ink">No projects available</div>
+        <p className="mx-auto mt-1 max-w-lg text-[12.5px] text-ink-3">Create a customer and project before building a compliance matrix.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -74,7 +84,7 @@ export function ComplianceClient({ projects, data, users }: { projects: { id: st
         </div>
         <div className="divide-y divide-line-2">
           {filtered.map((r) => {
-            const eng = users[r.engineerId];
+            const eng = users[r.engineerId] ?? { name: "Unassigned", initials: "?" };
             return (
               <div key={r.id} className="grid grid-cols-1 gap-2 px-4 py-3 lg:grid-cols-[52px_1fr_1fr_110px] lg:gap-3">
                 <div className="tnum font-mono text-[12px] font-semibold text-ink-3">{r.clause}</div>

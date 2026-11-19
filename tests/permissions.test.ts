@@ -7,6 +7,8 @@ describe("permissions.can", () => {
       expect(can({ accessLevel: "admin" }, perm)).toBe(true);
       expect(can({ accessLevel: "director" }, perm)).toBe(true);
     }
+    expect(permsFor("admin")).toEqual(ALL_PERMS);
+    expect(permsFor("director")).toEqual(ALL_PERMS);
   });
 
   it("viewer can do nothing", () => {

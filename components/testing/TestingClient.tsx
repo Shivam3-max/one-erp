@@ -24,6 +24,16 @@ export function TestingClient({ units, users }: { units: TestUnit[]; users: Reco
   const [saving, start] = useTransition();
   const record = (id: string, result: "pass" | "fail") => start(async () => { await recordTestResult(id, result); router.refresh(); });
 
+  if (!unit) {
+    return (
+      <div className="rounded-[var(--radius-lg)] border border-dashed border-line bg-surface px-6 py-14 text-center">
+        <ShieldCheck className="mx-auto h-8 w-8 text-ink-4" />
+        <div className="mt-3 text-[14px] font-semibold text-ink">No test plans yet</div>
+        <p className="mx-auto mt-1 max-w-lg text-[12.5px] text-ink-3">Advance a project to Manufacturing, then use New test plan to generate its routine and type tests.</p>
+      </div>
+    );
+  }
+
   const passed = unit.tests.filter((t) => t.result === "pass").length;
   const pending = unit.tests.filter((t) => t.result === "pending").length;
   const total = unit.tests.length;

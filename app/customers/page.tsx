@@ -2,9 +2,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { CustomersClient, type CustomerRow } from "@/components/crm/CustomersClient";
 import { getCustomers, getProjects, getOpportunities } from "@/lib/data";
 import { initialsOf } from "@/lib/format";
+import { NewCustomerButton } from "@/components/crm/NewCustomerButton";
+import { getCurrentUser } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 
 export default async function CustomersPage() {
-  const [customers, projects, opps] = await Promise.all([getCustomers(), getProjects(), getOpportunities()]);
+  const [user, customers, projects, opps] = await Promise.all([getCurrentUser(), getCustomers(), getProjects(), getOpportunities()]);
   const rows: CustomerRow[] = customers.map((c) => {
     const cp = projects.filter((p) => p.customerId === c.id);
     return {
@@ -27,6 +30,7 @@ export default async function CustomersPage() {
         eyebrow="Sales"
         title="Customers"
         subtitle="Utilities, EPCs and industrials — every relationship, project and conversation in one place."
+        action={can(user, "crm.manage") ? <NewCustomerButton /> : undefined}
       />
       <CustomersClient rows={rows} />
     </>

@@ -4,6 +4,7 @@ import {
   signInSchema,
   registerSchema,
   createProjectSchema,
+  createCustomerSchema,
   logCommunicationSchema,
 } from "@/lib/validation";
 
@@ -19,6 +20,31 @@ describe("signInSchema", () => {
   it("rejects an empty password", () => {
     const r = parseInput(signInSchema, { email: "a@b.com", password: "" });
     expect(r.ok).toBe(false);
+  });
+});
+
+describe("createCustomerSchema", () => {
+  const valid = {
+    name: "Acme Utilities",
+    type: "utility",
+    city: "Pune",
+    state: "Maharashtra",
+    country: "India",
+    gstin: "",
+    rating: "A",
+    contactName: "Pat Rao",
+    contactRole: "Procurement Manager",
+    contactEmail: "pat@acme.example",
+    contactPhone: "",
+  };
+
+  it("accepts a customer with a primary contact", () => {
+    expect(parseInput(createCustomerSchema, valid).ok).toBe(true);
+  });
+
+  it("rejects invalid types and contact emails", () => {
+    expect(parseInput(createCustomerSchema, { ...valid, type: "retail" }).ok).toBe(false);
+    expect(parseInput(createCustomerSchema, { ...valid, contactEmail: "invalid" }).ok).toBe(false);
   });
 });
 

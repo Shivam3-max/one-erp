@@ -39,6 +39,22 @@ export const logCommunicationSchema = z.object({
   summary: z.string().trim().max(2000).default(""),
 });
 
+export const customerTypeEnum = z.enum(["utility", "epc", "industrial", "government", "export"]);
+
+export const createCustomerSchema = z.object({
+  name: z.string().trim().min(1, "Customer name is required").max(160),
+  type: customerTypeEnum,
+  city: z.string().trim().min(1, "City is required").max(100),
+  state: z.string().trim().min(1, "State is required").max(100),
+  country: z.string().trim().min(1, "Country is required").max(100),
+  gstin: z.string().trim().max(30).default(""),
+  rating: z.enum(["A", "B", "C"]).default("A"),
+  contactName: z.string().trim().min(1, "Primary contact name is required").max(120),
+  contactRole: z.string().trim().max(120).default(""),
+  contactEmail: z.string().trim().email("Enter a valid contact email").max(200),
+  contactPhone: z.string().trim().max(40).default(""),
+});
+
 export const saveConfigurationSchema = z.object({
   projectId: z.string().trim().min(1),
   familyId: z.string().trim().min(1),
