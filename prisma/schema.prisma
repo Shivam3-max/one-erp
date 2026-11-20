@@ -149,9 +149,24 @@ model Artifact {
   meta            Json?
   revisions       Revision[]
   links           ArtifactLink[]
+  file            DocumentFile?
 
   @@index([tenantId])
   @@index([projectId])
+}
+
+model DocumentFile {
+  id         String   @id @default(cuid())
+  tenantId   String
+  artifactId String   @unique
+  artifact   Artifact @relation(fields: [artifactId], references: [id], onDelete: Cascade)
+  fileName   String
+  mimeType   String
+  size       Int
+  content    Bytes    @db.LongBlob
+  createdAt  String
+
+  @@index([tenantId])
 }
 
 model Revision {

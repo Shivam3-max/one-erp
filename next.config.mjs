@@ -31,6 +31,11 @@ const securityHeaders = [
 const nextConfig = {
   devIndicators: false,
   output: "standalone",
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "10mb",
+    },
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

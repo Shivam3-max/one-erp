@@ -22,6 +22,7 @@ export interface DocRow {
   ownerName: string;
   ownerInitials: string;
   updatedAt: string;
+  downloadUrl?: string;
 }
 
 export function DocumentsClient({
@@ -115,12 +116,16 @@ export function DocumentsClient({
                   <span className="hidden sm:inline">{relDate(r.updatedAt)}</span>
                 </div>
                 <span className="text-[10.5px] text-ink-4">{r.size}</span>
-                <button className="text-ink-4 hover:text-brand"><Download className="h-4 w-4" /></button>
+                {r.downloadUrl ? (
+                  <a href={r.downloadUrl} aria-label={`Download ${r.title}`} title={`Download ${r.title}`} className="text-ink-4 hover:text-brand"><Download className="h-4 w-4" /></a>
+                ) : (
+                  <span title="No uploaded file is attached" className="cursor-not-allowed text-ink-4/40"><Download className="h-4 w-4" /></span>
+                )}
               </div>
             </div>
           ))}
           {filtered.length === 0 && (
-            <div className="px-4 py-12 text-center text-[13px] text-ink-4">No documents match your filter.</div>
+            <div className="px-4 py-12 text-center text-[13px] text-ink-4">{rows.length === 0 ? "No documents yet. Use Add document to upload the first file." : "No documents match your filter."}</div>
           )}
         </div>
       </div>

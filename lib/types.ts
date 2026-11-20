@@ -196,7 +196,8 @@ export type ArtifactType =
   | "invoice"
   | "email"
   | "meeting-note"
-  | "photo";
+  | "photo"
+  | "uploaded-document";
 
 export type ArtifactStatus =
   | "draft"

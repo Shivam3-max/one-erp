@@ -15,12 +15,13 @@ export type Perm =
   | "manufacturing.manage"
   | "testing.manage"
   | "crm.manage"
+  | "documents.manage"
   | "settings.manage";
 
 export const ALL_PERMS: Perm[] = [
   "project.create", "project.advance", "config.save", "quotation.create",
   "quotation.issue", "quotation.approve", "procurement.manage", "manufacturing.manage",
-  "testing.manage", "crm.manage", "settings.manage",
+  "testing.manage", "crm.manage", "documents.manage", "settings.manage",
 ];
 
 const ROLE_PERMS: Record<string, Perm[] | "*"> = {
@@ -28,11 +29,11 @@ const ROLE_PERMS: Record<string, Perm[] | "*"> = {
   director: "*",
   manager: [
     "project.create", "project.advance", "config.save", "quotation.create",
-    "quotation.issue", "quotation.approve", "procurement.manage", "manufacturing.manage", "testing.manage", "crm.manage",
+    "quotation.issue", "quotation.approve", "procurement.manage", "manufacturing.manage", "testing.manage", "crm.manage", "documents.manage",
   ],
   member: [
     "project.create", "project.advance", "config.save", "quotation.create",
-    "procurement.manage", "manufacturing.manage", "testing.manage", "crm.manage",
+    "procurement.manage", "manufacturing.manage", "testing.manage", "crm.manage", "documents.manage",
   ],
   viewer: [],
 };

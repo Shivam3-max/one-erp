@@ -22,6 +22,7 @@ const ICONS: Record<ArtifactType, LucideIcon> = {
   "work-order": Wrench, "test-certificate": BadgeCheck, "inspection-report": ClipboardList,
   "dispatch-note": Truck, "commissioning-report": PlugZap, "warranty-certificate": ShieldCheck,
   invoice: Receipt, email: Mail, "meeting-note": NotebookPen, photo: ImageIcon,
+  "uploaded-document": FileText,
 };
 
 export function ArtifactCard({ artifact, users }: { artifact: Artifact; users: Record<string, UserLite> }) {

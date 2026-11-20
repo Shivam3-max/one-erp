@@ -23,6 +23,7 @@ describe("permissions.can", () => {
     expect(can(member, "quotation.issue")).toBe(false);
     expect(can(member, "quotation.approve")).toBe(false);
     expect(can(member, "project.create")).toBe(true);
+    expect(can(member, "documents.manage")).toBe(true);
   });
 
   it("manager can manage CRM and procurement but not settings", () => {
@@ -30,6 +31,7 @@ describe("permissions.can", () => {
     expect(can(manager, "crm.manage")).toBe(true);
     expect(can(manager, "procurement.manage")).toBe(true);
     expect(can(manager, "settings.manage")).toBe(false);
+    expect(can(manager, "documents.manage")).toBe(true);
   });
 
   it("null/undefined user is denied", () => {

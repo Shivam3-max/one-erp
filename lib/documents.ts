@@ -21,6 +21,7 @@ const CATEGORY: Record<ArtifactType, DocCategory> = {
   "test-certificate": "Quality", "inspection-report": "Quality",
   "dispatch-note": "Lifecycle", "commissioning-report": "Lifecycle", "warranty-certificate": "Lifecycle",
   email: "Correspondence", "meeting-note": "Correspondence", photo: "Correspondence",
+  "uploaded-document": "Engineering",
 };
 
 const FORMAT: Record<ArtifactType, string> = {
@@ -33,12 +34,29 @@ const FORMAT: Record<ArtifactType, string> = {
   "test-certificate": "PDF", "inspection-report": "PDF",
   "dispatch-note": "PDF", "commissioning-report": "PDF", "warranty-certificate": "PDF",
   email: "EML", "meeting-note": "DOCX", photo: "JPG",
+  "uploaded-document": "FILE",
 };
 
 export const DOC_CATEGORIES: DocCategory[] = [
   "Tender & RFQ", "Drawings", "Engineering", "Commercial",
   "Compliance", "Manufacturing", "Quality", "Lifecycle", "Correspondence",
 ];
+
+export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024;
+
+const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
+  "pdf", "doc", "docx", "xls", "xlsx", "csv", "txt",
+  "png", "jpg", "jpeg", "dwg", "zip", "eml",
+]);
+
+export function documentFileExtension(name: string): string {
+  const extension = name.split(".").pop()?.toLowerCase() ?? "";
+  return extension === "jpeg" ? "jpg" : extension;
+}
+
+export function isAllowedDocumentName(name: string): boolean {
+  return ALLOWED_DOCUMENT_EXTENSIONS.has(documentFileExtension(name));
+}
 
 export function docCategory(t: ArtifactType): DocCategory {
   return CATEGORY[t] ?? "Engineering";
@@ -58,6 +76,12 @@ export function docSize(id: string, format: string): string {
   return `${240 + base * 6} KB`;
 }
 
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export const FORMAT_TONE: Record<string, string> = {
   PDF: "bg-danger-soft text-danger",
   DWG: "bg-brand-soft text-brand",
@@ -67,4 +91,8 @@ export const FORMAT_TONE: Record<string, string> = {
   ZIP: "bg-copper-soft text-copper",
   JPG: "bg-warn-soft text-warn",
   EML: "bg-neutral-soft text-ink-3",
+  FILE: "bg-neutral-soft text-ink-3",
+  PNG: "bg-warn-soft text-warn",
+  CSV: "bg-ok-soft text-ok",
+  TXT: "bg-neutral-soft text-ink-3",
 };
